@@ -1,7 +1,7 @@
 import TimeSlot from "./Classes/TimeSlot";
 import DayTable from "./Classes/DayTable";
 import TimeTable from "./Classes/TimeTable";
-import getFuncConstraints from "./Utils/getConstraints"
+import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
 
 
@@ -105,7 +105,32 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDict : 
     }
 }
 
-let results = await getTables(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11");
-if(results && results[0]){
+async function orderTables(possibleLessons : string[], possibleClassrooms : string[], paragraph : string, timeTables : TimeTable[]) : Promise<TimeTable[] | undefined>{
+    let prioritiesText = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
+
+    if(prioritiesText){
+        console.log(`priority: ${prioritiesText}`)
+        let priorityParsed = prioritiesText.slice(1, -1)
+        let callableFunction : CallableFunction = eval(`(${priorityParsed})`);
+        let newTimeTables = timeTables.map(timeTable => timeTable.clone());
+        newTimeTables.sort((a, b)=>{
+            return callableFunction(b) - callableFunction(a)
+        })
+        
+        return newTimeTables;
+    }
+}
+
+async function entireProcess(days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
+    let results = await getTables(days, periodsPerDay, lessonsDict, possibleClassrooms, constraintsParagraph);
+    if(results){
+        let newResults = await orderTables(Object.keys(lessonsDict), possibleClassrooms, prioritiesParagraph, results);
+        return newResults;
+    }
+}
+
+let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
+     "Maths is prefered the more later it is in the day")
+if(results){
     console.log(results[0].turnIntoMatrix())
 }
