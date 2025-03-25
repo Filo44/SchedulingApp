@@ -35,7 +35,13 @@ export default class TimeTable{
     }
 
     isFinished(dayPos : number, periodPos : number){
-        return (this.days.length - 1 == dayPos && this.days[dayPos].periods.length > this.days[dayPos].amPeriods)
+        // console.log(`daypos: ${dayPos}`)
+        // console.log(`periodpos: ${periodPos}`)
+        // console.log(`this.days.length - 1 == dayPos: ${this.days.length - 1 == dayPos}`)
+        // console.log(`periodPos > this.days[dayPos].amPeriods: ${periodPos > this.days[dayPos].amPeriods}`)
+        // console.log(`days.length: ${this.days.length}`)
+        // console.log(`(dayPos >= this.days.length): ${(dayPos >= this.days.length)}`)
+        return (dayPos >= this.days.length)
     }
 
     clone() {

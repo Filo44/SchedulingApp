@@ -54,7 +54,7 @@ function recurse(timeTable : TimeTable, posLessons : string[], posClassrooms : s
                 let newPeriodPos = periodPos;
 
                 //*If we are on the last day
-                if( newTimeTable.days[dayPos].amPeriods == periodPos-1){
+                if(periodPos + 1 >= newTimeTable.days[dayPos].amPeriods){
                     newDayPos++;
                     newPeriodPos = 0;
                 }else{
@@ -84,12 +84,12 @@ async function getTables(days : number, periodsPerDay : number[], possibleLesson
     
         let testTimeTable = setUpTable(days, constraints, periodsPerDay);
         let result = recurse(testTimeTable, possibleLessons, possibleClassrooms, 0, 0);
-        console.log(result.map(solution=> solution.turnIntoMatrix()))
+        // console.log(result.map(solution=> solution.turnIntoMatrix()))
         return result;
     }
 }
 
-let results = await getTables(2, [2,2], ["maths", "english", "physics"], ["s10","s11"], "The maths lesson must never be in s11");
+let results = await getTables(2, [4,4], ["maths", "english", "physics"], ["s11","s10"], "Maths cannot be in s11, there can't be 2 consecutive maths periods");
 if(results && results[0]){
     console.log(results[0].turnIntoMatrix())
 }
