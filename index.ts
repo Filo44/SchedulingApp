@@ -106,15 +106,15 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDict : 
 }
 
 async function orderTables(possibleLessons : string[], possibleClassrooms : string[], paragraph : string, timeTables : TimeTable[]) : Promise<TimeTable[] | undefined>{
-    let prioritiesText = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
+    let prioritiesTexts = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
 
-    if(prioritiesText){
+    if(prioritiesTexts){
+        let prioritiesText = JSON.parse(prioritiesTexts)[0]
         console.log(`priority: ${prioritiesText}`)
-        let priorityParsed = prioritiesText.slice(1, -1)
-        let callableFunction : CallableFunction = eval(`(${priorityParsed})`);
+        let callableFunction : CallableFunction = eval(`(${prioritiesText})`);
         let newTimeTables = timeTables.map(timeTable => timeTable.clone());
         newTimeTables.sort((a, b)=>{
-            return callableFunction(b) - callableFunction(a)
+            return callableFunction(b.turnIntoMatrix()) - callableFunction(a.turnIntoMatrix())
         })
         
         return newTimeTables;
@@ -130,7 +130,7 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
 }
 
 let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
-     "Maths is prefered the more later it is in the day")
+     "Minimize travelling between different classrooms")
 if(results){
     console.log(results[0].turnIntoMatrix())
 }

@@ -40,10 +40,13 @@ export async function getFuncConstraints(possibleLessons : string[], possibleCla
 export async function getScoringFunctions(possibleLessons : string[], possibleClassrooms: string[], paragraph : string){
   const generationConfig = {
     ...generationConfigGeneral,
-    systemInstruction:  `Your job is to create a string (**no escape characters necessary, e.g. no backslashes before quotation marks**) which contains an anonymous function in Javascript which takes in one parameter called "timetableMatrix" which is a 2d array. timetableMatrix represents a time table. The time slots can be accessed by accessing the parameter "timetableMatrix" like this : timetableMatrix[dayIndex][periodIndex]. Each element has two properties: "classroom" and "lesson" which can be accessed like this:  "timetableMatrix[dayIndex][periodIndex].classroom" and  "timetableMatrix[dayIndex][periodIndex].lesson" respectively. You will receive three things after this, a list of the lessons, a list of the classrooms and a paragraph which details/lists different what the timetable must prioritise for **in order of importance**. Your job is to create an anynoymous javascript function which returns an integer which is a score of how "good" the timetable is according to the prioritise detailed previously which, as described before, takes in a parameter timetableMatrix. The better the timetable, the higher the score. `,
+    systemInstruction:  `Your job is to create an array with one string which contains an anonymous function in Javascript which takes in one parameter called "timetableMatrix" which is a 2d array. timetableMatrix represents a time table. The time slots can be accessed by accessing the parameter "timetableMatrix" like this : timetableMatrix[dayIndex][periodIndex]. Each element has two properties: "classroom" and "lesson" which can be accessed like this:  "timetableMatrix[dayIndex][periodIndex].classroom" and  "timetableMatrix[dayIndex][periodIndex].lesson" respectively. You will receive three things after this, a list of the lessons, a list of the classrooms and a paragraph which details/lists different what the timetable must prioritise for **in order of importance**. Your job is to create an anynoymous javascript function which returns an integer which is a score of how "good" the timetable is according to the prioritise detailed previously which, as described before, takes in a parameter timetableMatrix. The better the timetable, the higher the score. `,
     responseMimeType: "application/json",
     responseSchema: {
-        type: Type.STRING,
+        type: Type.ARRAY,
+        items: {
+            type: Type.STRING
+        }
     },
   };
   const prompt = `The possible lesson strings are the following: "${JSON.stringify(possibleLessons)}", the possible classrooms are: "${JSON.stringify(possibleClassrooms)}" and the paragraph describing the prioritise **in order of importance** is: "${paragraph}" .`
