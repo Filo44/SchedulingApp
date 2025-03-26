@@ -4,26 +4,7 @@ import TimeTable from "./Classes/TimeTable";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
 
-
-// let constraints : CallableFunction[] = [(lessonMatrix : TimeSlot[][])=>{
-
-//     for(let i = 0; i<lessonMatrix.length; i++){
-//         let day = lessonMatrix[i];
-//         for(let j = 0; j<day.length; j++){
-//             let timeslot = day[j];
-
-//             // console.log("Lesson: ", timeslot.lesson)
-//             // console.log("Classroom: ", timeslot.classroom)
-
-//             if(timeslot.lesson == "maths" && timeslot.classroom == "s11"){
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
-// }]
-
-function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : any){
+function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
     let days : DayTable[] = [];
 
     //*Creates all days
@@ -35,11 +16,23 @@ function setUpTable(amDays : number, constraints : CallableFunction[], periodsPe
     return currTimetable;
 }
 
-function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms : string[], dayPos : number, periodPos : number) : TimeTable[]{
-    if(timeTable.isFinished(dayPos, periodPos)){
-        return [timeTable];
+function setUpAllTables(amTables : number, amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
+    let tables : TimeTable[] = [];
+    for(let i = 0; i<amTables; i++){
+        tables.push(setUpTable(amDays, constraints, periodsPerDay))
     }
-    let solutions : TimeTable[] = [];
+    return tables;
+}
+
+function recurse(timeTables : TimeTable[], posLessonsDict : object, posClassrooms : string[], timeTablePos : number, dayPos : number, periodPos : number) : TimeTable[][]{
+    if(timeTablePos>=timeTables.length){
+        return [timeTables]
+    }
+    let timeTable = timeTables[timeTablePos];
+    if(timeTable.isFinished(dayPos, periodPos)){
+        return [timeTables];
+    }
+    let solutions : TimeTable[][] = [];
     let posLessons = Object.keys(posLessonsDict);
     // console.log(posLessonsDict)
 
@@ -55,8 +48,11 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                 delete newPosLessonsDict[chosenLesson];
             }
 
-            //*Clones the timetable
-            let newTimeTable = timeTable.clone();
+            //*Clones the timetables
+            let newTimeTables = timeTables.map(currTimeTable=>currTimeTable.clone());
+
+            //*Sets the newTimeTable
+            let newTimeTable = newTimeTables[timeTablePos];
 
             //*Creates new timeslot with chosen params
             newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(chosenLesson, chosenClassroom)
@@ -65,16 +61,23 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                 //TODO Figure out a way to move the next day and period calcs outside without breaking newTimeTable.days[daypos]...
                 let newDayPos = dayPos;
                 let newPeriodPos = periodPos;
+                let newTimeTablePos = timeTablePos;
 
-                //*If we are on the last day
+                //*If we are on the last period
                 if(periodPos + 1 >= newTimeTable.days[dayPos].amPeriods){
-                    newDayPos++;
+                    //*If we are on the last day
+                    if(dayPos + 1 >= newTimeTable.days.length){
+                        newTimeTablePos++;
+                        newDayPos = 0;
+                    }else{
+                        newDayPos++;
+                    }
                     newPeriodPos = 0;
                 }else{
                     newPeriodPos++;
                 }
 
-                let result = recurse(newTimeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos);
+                let result = recurse(newTimeTables, newPosLessonsDict, posClassrooms, newTimeTablePos, newDayPos, newPeriodPos);
                 //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
                 solutions.push(...result);
             }
@@ -83,7 +86,7 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
     return solutions;
 }
 
-async function getTables(days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], paragraph : string) : Promise<TimeTable[] | undefined>{
+async function getTables(timetables : number, days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], paragraph : string) : Promise<TimeTable[][] | undefined>{
 
     let possibleLessons = Object.keys(lessonsDict)
     let constraintsText = await getFuncConstraints(possibleLessons, possibleClassrooms, paragraph);
@@ -98,21 +101,21 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDict : 
             constraints.push(callableFunction);
         }
     
-        let testTimeTable = setUpTable(days, constraints, periodsPerDay);
-        let result = recurse(testTimeTable, lessonsDict, possibleClassrooms, 0, 0);
+        let testTimeTables : TimeTable[] = setUpAllTables(timetables, days, constraints, periodsPerDay);
+        let result = recurse(testTimeTables, lessonsDict, possibleClassrooms, 0, 0, 0);
         // console.log(result.map(solution=> solution.turnIntoMatrix()))
         return result;
     }
 }
 
-async function orderTables(possibleLessons : string[], possibleClassrooms : string[], paragraph : string, timeTables : TimeTable[]) : Promise<TimeTable[] | undefined>{
+async function orderTables(possibleLessons : string[], possibleClassrooms : string[], paragraph : string, timeTables : TimeTable[][]) : Promise<TimeTable[] | undefined>{
     let prioritiesTexts = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
 
     if(prioritiesTexts){
         let prioritiesText = JSON.parse(prioritiesTexts)[0]
         console.log(`priority: ${prioritiesText}`)
         let callableFunction : CallableFunction = eval(`(${prioritiesText})`);
-        let newTimeTables = timeTables.map(timeTable => timeTable.clone());
+        let newTimeTables = timeTables.map(oneSettimeTables => timeTable.clone());
         newTimeTables.sort((a, b)=>{
             return callableFunction(b.turnIntoMatrix()) - callableFunction(a.turnIntoMatrix())
         })
@@ -121,15 +124,15 @@ async function orderTables(possibleLessons : string[], possibleClassrooms : stri
     }
 }
 
-async function entireProcess(days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
-    let results = await getTables(days, periodsPerDay, lessonsDict, possibleClassrooms, constraintsParagraph);
+async function entireProcess(timetables : number, days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
+    let results = await getTables(timetables, days, periodsPerDay, lessonsDict, possibleClassrooms, constraintsParagraph);
     if(results){
         let newResults = await orderTables(Object.keys(lessonsDict), possibleClassrooms, prioritiesParagraph, results);
         return newResults;
     }
 }
 
-let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
+let results = await entireProcess(1, 2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
      "Minimize travelling between different classrooms")
 if(results){
     console.log(results[0].turnIntoMatrix())
