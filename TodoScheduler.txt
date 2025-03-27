@@ -1,3 +1,4 @@
 TODO for Scheduler:
 - Be able to manage timetable combinations
+- Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")
 - Make quicker i.e. scale better (LATER)

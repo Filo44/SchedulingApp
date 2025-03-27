@@ -1,4 +1,5 @@
 import DayTable from "./DayTable";
+import TimeSlot from "./TimeSlot";
 
 export default class TimeTable{
     days : DayTable[];
@@ -27,7 +28,7 @@ export default class TimeTable{
     }
 
     turnIntoMatrix(){
-        let arr = []
+        let arr : TimeSlot[][] = []
         this.days.forEach(day=>{
             arr.push(structuredClone(day.periods));
         })
