@@ -3,26 +3,6 @@ import DayTable from "./Classes/DayTable";
 import TimeTable from "./Classes/TimeTable";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
-
-
-// let constraints : CallableFunction[] = [(lessonMatrix : TimeSlot[][])=>{
-
-//     for(let i = 0; i<lessonMatrix.length; i++){
-//         let day = lessonMatrix[i];
-//         for(let j = 0; j<day.length; j++){
-//             let timeslot = day[j];
-
-//             // console.log("Lesson: ", timeslot.lesson)
-//             // console.log("Classroom: ", timeslot.classroom)
-
-//             if(timeslot.lesson == "maths" && timeslot.classroom == "s11"){
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
-// }]
-
 function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : any){
     let days : DayTable[] = [];
 
@@ -35,16 +15,23 @@ function setUpTable(amDays : number, constraints : CallableFunction[], periodsPe
     return currTimetable;
 }
 
-function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms : string[], dayPos : number, periodPos : number) : TimeTable[]{
+function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms : string[], dayPos : number, periodPos : number, disallowedClassroomsPerTimeSlot : string[][][]) : TimeTable[]{
     if(timeTable.isFinished(dayPos, periodPos)){
         return [timeTable];
     }
     let solutions : TimeTable[] = [];
     let posLessons = Object.keys(posLessonsDict);
+    let actualPosLessons = posLessons.filter(lesson=>!(disallowedClassroomsPerTimeSlot[dayPos][periodPos].includes(lesson)));
     // console.log(posLessonsDict)
 
-    posLessons.forEach(chosenLesson=>{
+    actualPosLessons.forEach(chosenLesson=>{
         posClassrooms.forEach(chosenClassroom=>{
+            //*Clones the >>
+            let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
+
+            //*Disallowing the classroom chosen for the period chosen
+            newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
+
             //*Clones the >>
             let newPosLessonsDict = structuredClone(posLessonsDict);
             
@@ -74,7 +61,7 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                     newPeriodPos++;
                 }
 
-                let result = recurse(newTimeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos);
+                let result = recurse(newTimeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
                 //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
                 solutions.push(...result);
             }
@@ -83,7 +70,7 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
     return solutions;
 }
 
-async function getTables(days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], paragraph : string) : Promise<TimeTable[] | undefined>{
+async function getTables(days : number, periodsPerDay : number[], lessonsDict : object, possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[] | undefined>{
 
     let possibleLessons = Object.keys(lessonsDict)
     let constraintsText = await getFuncConstraints(possibleLessons, possibleClassrooms, paragraph);
@@ -99,7 +86,8 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDict : 
         }
     
         let testTimeTable = setUpTable(days, constraints, periodsPerDay);
-        let result = recurse(testTimeTable, lessonsDict, possibleClassrooms, 0, 0);
+        let bannedClassrooms = generate2DArray(days, periodsPerDay);
+        let result = recurse(testTimeTable, lessonsDict, possibleClassrooms, 0, 0, bannedClassrooms);
         // console.log(result.map(solution=> solution.turnIntoMatrix()))
         return result;
     }
@@ -128,9 +116,20 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
         return newResults;
     }
 }
-
-let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
-     "Minimize travelling between different classrooms")
-if(results){
-    console.log(results[0].turnIntoMatrix())
+function generate2DArray(amDays : number, amPeriods : number[]) {
+    let res : string[][][] = [];
+    for(let i=0; i<amDays; i++){
+        let subArr : string[][] = []
+        for(let j = 0; j<amPeriods[i]; j++){
+            subArr.push([])
+        }
+        res.push(subArr);
+    }
+    return res
 }
+
+// let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
+//      "Minimize travelling between different classrooms")
+// if(results){
+//     console.log(results[0].turnIntoMatrix())
+// }
