@@ -126,13 +126,18 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
             for(let period = 0; period<timeTableMatrix[day].length; period++){
                 // console.log("lesson:", timeTableMatrix[period][day].lesson)
                 // console.log("classroom:", timeTableMatrix[period][day].classroom)
-                // console.log("a")
-                // console.log(`timeTableMatrix: ${timeTableMatrix.map(day => day.map(timeSlot => `{classroom: ${timeSlot.classroom}, lesson: ${timeSlot.lesson}}`))}`)
-                // console.log(`period: ${period}`)
-                // console.log(`timeTableMatrix[period]: ${timeTableMatrix[period]}`)
-                let classroom = timeTableMatrix[period][day].classroom;
+                console.log("a")
+                console.log(`day: ${day}`)
+                console.log(`period: ${period}`)
+                console.log(`timeTableMatrix: ${timeTableMatrix.map(day => {
+                    let mapped = day.map(timeSlot => `{classroom: ${timeSlot.classroom}, lesson: ${timeSlot.lesson}}`)
+                    let string = `[${mapped}]`;
+                    return string
+                })}`)
+                console.log(`timeTableMatrix[day]: ${timeTableMatrix[day]}`)
+                let classroom = timeTableMatrix[day][period].classroom;
                 // console.log("b")
-                newDisallowedClassroomsPerTimeSlot[period][day].push(classroom);
+                newDisallowedClassroomsPerTimeSlot[day][period].push(classroom);
             }
         }
         
