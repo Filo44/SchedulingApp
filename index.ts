@@ -36,42 +36,39 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
 
     actualPosLessons.forEach(chosenLesson=>{
         posClassrooms.forEach(chosenClassroom=>{
-            //*Clones the >>
-            let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
+            if(timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)){
+                //*Clones the >>
+                let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
 
-            //*Disallowing the classroom chosen for the period chosen
-            newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
+                //*Disallowing the classroom chosen for the period chosen
+                newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
 
-            //*Clones the >>
-            let newPosLessonsDict = structuredClone(posLessonsDict);
-            
-            //*Decrements the lesson
-            newPosLessonsDict[chosenLesson] = newPosLessonsDict[chosenLesson] - 1;
-            //*If there are no more periods to fill, the lesson is deleted from the object
-            if(newPosLessonsDict[chosenLesson]<1){
-                delete newPosLessonsDict[chosenLesson];
-            }
+                //*Clones the >>
+                let newPosLessonsDict = structuredClone(posLessonsDict);
+                
+                //*Decrements the lesson
+                newPosLessonsDict[chosenLesson] = newPosLessonsDict[chosenLesson] - 1;
+                //*If there are no more periods to fill, the lesson is deleted from the object
+                if(newPosLessonsDict[chosenLesson]<1){
+                    delete newPosLessonsDict[chosenLesson];
+                }
 
-            //*Clones the timetable
-            let newTimeTable = timeTable.clone();
+                //*Creates new timeslot with chosen params
+                timeTable.days[dayPos].periods[periodPos] = new TimeSlot(chosenLesson, chosenClassroom)
 
-            //*Creates new timeslot with chosen params
-            newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(chosenLesson, chosenClassroom)
-
-            if(newTimeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)){
                 //TODO Figure out a way to move the next day and period calcs outside without breaking newTimeTable.days[daypos]...
                 let newDayPos = dayPos;
                 let newPeriodPos = periodPos;
 
                 //*If we are on the last day
-                if(periodPos + 1 >= newTimeTable.days[dayPos].amPeriods){
+                if(periodPos + 1 >= timeTable.days[dayPos].amPeriods){
                     newDayPos++;
                     newPeriodPos = 0;
                 }else{
                     newPeriodPos++;
                 }
 
-                let result = recurse(newTimeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
+                let result = recurse(timeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
                 //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
                 solutions.push(...result);
             }
@@ -109,11 +106,9 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
 
     //*For each possible table...
     posTimeTables.forEach(posTimeTable=>{
-
-        let newTimeTables = timeTables.map(timeTable=>timeTable.clone());
         
         //*We add it to the array of tables
-        newTimeTables[timeTablePos] = posTimeTable;
+        timeTables[timeTablePos] = posTimeTable;
 
         //*We calculate the NOW disallowed classroomsPerTimeSlot
         let timeTableMatrix = posTimeTable.turnIntoMatrix();
@@ -126,7 +121,7 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
             }
         }
         
-        let results = timeTablesRecurse(newTimeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
+        let results = timeTablesRecurse(timeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
         solutions.push(...results);
     })
     return solutions
