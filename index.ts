@@ -191,6 +191,9 @@ async function orderTables(possibleLessons : string[], possibleClassrooms : stri
 }
 
 async function entireProcess(days : number, periodsPerDay : number[], lessonsDicts : object[], possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
+    if(!checkCanFinish(periodsPerDay, lessonsDicts)){
+        throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
+    }
     console.log("posClassrooms:", possibleClassrooms)
     let amTimeTables = lessonsDicts.length;
     let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
@@ -224,7 +227,22 @@ function getAllKeys(arrayOfObjects : object[]){
     return Object.keys(keys)
 }
 
-let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}, {"maths":3, "english":3}], ["s11", "s10"], 
+function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
+    let periodsPerTimeTable = periodsPerDay.reduce((partialSum, a) => partialSum + a, 0);
+    for(let i = 0; i < periodsPerDay.length; i++){
+        let lessonsDictThisDay = lessonsDicts[i];
+        
+        let values = Object.values(lessonsDictThisDay)
+        let sum = values.reduce((partialSum, a) => partialSum + a, 0);
+
+        if(sum<periodsPerTimeTable){
+            return false;
+        }
+    }
+    return true;
+}
+
+let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
     "No restrictions",
      "Minimize travelling between different classrooms")
 if(results){
