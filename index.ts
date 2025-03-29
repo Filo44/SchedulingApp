@@ -43,14 +43,13 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                 //*Disallowing the classroom chosen for the period chosen
                 newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
 
-                //*Clones the >>
-                let newPosLessonsDict = structuredClone(posLessonsDict);
-                
                 //*Decrements the lesson
-                newPosLessonsDict[chosenLesson] = newPosLessonsDict[chosenLesson] - 1;
+                posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] - 1;
                 //*If there are no more periods to fill, the lesson is deleted from the object
-                if(newPosLessonsDict[chosenLesson]<1){
-                    delete newPosLessonsDict[chosenLesson];
+                let deleted = false;
+                if(posLessonsDict[chosenLesson]<1){
+                    delete posLessonsDict[chosenLesson];
+                    deleted = true;
                 }
 
                 //*Creates new timeslot with chosen params
@@ -68,9 +67,16 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                     newPeriodPos++;
                 }
 
-                let result = recurse(timeTable, newPosLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
+                let result = recurse(timeTable, posLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
                 //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
                 solutions.push(...result);
+
+                //*Restore posLessonDict
+                if(deleted){
+                    posLessonsDict[chosenLesson] = 1;
+                }else{
+                    posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] + 1;
+                }
             }
         })
     })
