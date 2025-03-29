@@ -1,3 +1,0 @@
-TODO for Scheduler:
-- Be able to manage timetable combinations
-- Make quicker i.e. scale better (LATER)

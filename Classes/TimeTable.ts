@@ -1,4 +1,6 @@
 import DayTable from "./DayTable";
+import TimeSlot from "./TimeSlot";
+import util from "util"; // Only needed in Node.js
 
 export default class TimeTable{
     days : DayTable[];
@@ -9,12 +11,12 @@ export default class TimeTable{
         this.days = days;
     }
 
-    checkConstraints(){
+    checkConstraints(chosenClassroom : string, chosenLesson : string, dayPos : number, periodPos : number){
         let matrix = this.turnIntoMatrix();
         for(let i = 0; i<this.constraints.length; i++){
             let constraint = this.constraints[i]
             try{
-                let result = constraint(matrix);
+                let result = constraint(matrix, chosenClassroom, chosenLesson, dayPos, periodPos);
                 if(result==false){
                     return false;
                 }
@@ -27,7 +29,7 @@ export default class TimeTable{
     }
 
     turnIntoMatrix(){
-        let arr = []
+        let arr : TimeSlot[][] = []
         this.days.forEach(day=>{
             arr.push(structuredClone(day.periods));
         })
@@ -42,6 +44,14 @@ export default class TimeTable{
         // console.log(`days.length: ${this.days.length}`)
         // console.log(`(dayPos >= this.days.length): ${(dayPos >= this.days.length)}`)
         return (dayPos >= this.days.length)
+    }
+
+    [util.inspect.custom](){
+        return JSON.stringify(this.turnIntoMatrix());
+    }
+
+    toString(){
+        return JSON.stringify(this.turnIntoMatrix())
     }
 
     clone() {

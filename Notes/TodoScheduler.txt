@@ -1,0 +1,4 @@
+TODO for Scheduler:
+- Class overlap banning doesn't seem to be working, check
+- Make quicker i.e. scale better (NOW, as it scales actually horribly)
+- Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")
