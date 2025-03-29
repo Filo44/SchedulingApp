@@ -80,68 +80,57 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
 }
 
 function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : string[][][]) : TimeTable[][]{
-    console.log("------------------------------")
-    console.log("posClassrooms:", posClassrooms)
+    // console.log("------------------------------")
+    // console.log("posClassrooms:", posClassrooms)
 
     //*Checks if on the last (As we then increment it later before calling recurse)
     if(timeTablePos + 1>= timeTables.length){
         return [timeTables];
     }
 
-    console.log("inc newTimeTablePos")
+    // console.log("inc newTimeTablePos")
     //*Increment the timeTablePos
     let newTimeTablePos = timeTablePos + 1;
 
-    console.log("setting poslessonsdict to the timetablepos in posLessonsDicts")
+    // console.log("setting poslessonsdict to the timetablepos in posLessonsDicts")
     let posLessonsDict = posLessonsDicts[timeTablePos]
 
     //*This will be an array of the possible timeTable combinations (ie possible "timeTables" var)
     let solutions : TimeTable[][] = [];
     
-    console.log("getting next possible timetables (running recurse())")
+    // console.log("getting next possible timetables (running recurse())")
     //*Get the next possible timeTable
-    console.log("posClassrooms:", posClassrooms)
-    let posTimeTables= recurse(timeTables[newTimeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
-    // posTimeTables.forEach(tt=>printTimeTable(tt))
-    
-    console.log("Looping through the next possible timetables")
+    // console.log("posClassrooms:", posClassrooms)
+    let posTimeTables = recurse(timeTables[newTimeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
+    // console.log(`recurse(${timeTables[newTimeTablePos]}, ${JSON.stringify(posLessonsDict)}, ${JSON.stringify(posClassrooms)}, 0, 0, ${JSON.stringify(disallowedClassroomsPerTimeSlot)})`)
+    // console.log(posTimeTables)
+
+    // console.log("Looping through the next possible timetables")
     //*For each possible table...
     posTimeTables.forEach(posTimeTable=>{
-        printTimeTable(posTimeTable)
+        // console.log(posTimeTable)
 
-        console.log("Cloning timetables")
+        // console.log("Cloning timetables")
         let newTimeTables = timeTables.map(timeTable=>timeTable.clone());
         
-        console.log("Adding the timetable chosen to the array of timetables")
+        // console.log("Adding the timetable chosen to the array of timetables")
         //*We add it to the array of tables
         newTimeTables[timeTablePos] = posTimeTable;
 
-        console.log("Setting up the calculations the classrooms disallowed per time slot")
+        // console.log("Setting up the calculations the classrooms disallowed per time slot")
         //*We calculate the NOW disallowed classroomsPerTimeSlot
         let timeTableMatrix = posTimeTable.turnIntoMatrix();
         let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
         
-        console.log("Looping over the time table matrix and taking the classroom and adding it to the disallowed list at the day and period")
+        // console.log("Looping over the time table matrix and taking the classroom and adding it to the disallowed list at the day and period")
         for(let day = 0; day<timeTableMatrix.length; day++){
             for(let period = 0; period<timeTableMatrix[day].length; period++){
-                // console.log("lesson:", timeTableMatrix[period][day].lesson)
-                // console.log("classroom:", timeTableMatrix[period][day].classroom)
-                console.log("a")
-                console.log(`day: ${day}`)
-                console.log(`period: ${period}`)
-                console.log(`timeTableMatrix: ${timeTableMatrix.map(day => {
-                    let mapped = day.map(timeSlot => `{classroom: ${timeSlot.classroom}, lesson: ${timeSlot.lesson}}`)
-                    let string = `[${mapped}]`;
-                    return string
-                })}`)
-                console.log(`timeTableMatrix[day]: ${timeTableMatrix[day]}`)
                 let classroom = timeTableMatrix[day][period].classroom;
-                // console.log("b")
                 newDisallowedClassroomsPerTimeSlot[day][period].push(classroom);
             }
         }
         
-        console.log("Starting next recurse")
+        // console.log("Starting next recurse")
         let results = timeTablesRecurse(newTimeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
         solutions.push(...results);
     })
@@ -168,7 +157,7 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDicts :
         let blankTimeTables = setUpTimeTables(amTimetables, days, constraints, periodsPerDay)
         console.log("posClassrooms:", possibleClassrooms)
         results = timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
-        // console.log(result.map(solution=> solution.turnIntoMatrix()))
+        console.log(results)
 
         return results;
     }
@@ -206,7 +195,7 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     let amTimeTables = lessonsDicts.length;
     let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
     console.log(`finished getting pos tables`)
-    // console.log(printTimeTable())
+    console.log(results)
     if(results){
         let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
         return newResults;
@@ -235,16 +224,11 @@ function getAllKeys(arrayOfObjects : object[]){
     return Object.keys(keys)
 }
 
-function printTimeTable(timeTable : TimeTable){
-    let timeTableMatrix = timeTable.turnIntoMatrix();
-    console.log(`TT: [${timeTableMatrix.map(day => day.map(timeSlot => `{classroom: ${timeSlot.classroom}, lesson: ${timeSlot.lesson}}`))}]`)
-}
-
-let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":1}], ["s11", "s10"], 
-    "Maths cannot be in s11",
+let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}, {"maths":3, "english":3}], ["s11", "s10"], 
+    "No restrictions",
      "Minimize travelling between different classrooms")
 if(results){
-    console.log(results[0].map(timeTable => timeTable.turnIntoMatrix()))
+    console.log(results[0])
 }
 
 // let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
