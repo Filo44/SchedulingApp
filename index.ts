@@ -4,6 +4,8 @@ import TimeTable from "./Classes/TimeTable";
 import getEval from "./Utils/getEvals";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
+let nextTimeTableTT : object;
+
 function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
     let days : DayTable[] = [];
 
@@ -31,7 +33,6 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
     let solutions : TimeTable[] = [];
     let posLessons = Object.keys(posLessonsDict);
     let actualPosLessons = posLessons.filter(lesson=>!(disallowedClassroomsPerTimeSlot[dayPos][periodPos].includes(lesson)));
-    // console.log(posLessonsDict)
 
     actualPosLessons.forEach(chosenLesson=>{
         posClassrooms.forEach(chosenClassroom=>{
@@ -80,8 +81,6 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
 }
 
 function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : string[][][]) : TimeTable[][]{
-    // console.log("------------------------------")
-    // console.log("posClassrooms:", posClassrooms)
 
     //*Checks if on the last (As we then increment it later before calling recurse)
     if(timeTablePos >= timeTables.length){
@@ -89,41 +88,29 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
     }
 
 
-    // console.log("setting poslessonsdict to the timetablepos in posLessonsDicts")
     let posLessonsDict = posLessonsDicts[timeTablePos]
 
     //*This will be an array of the possible timeTable combinations (ie possible "timeTables" var)
     let solutions : TimeTable[][] = [];
     
-    // console.log("getting next possible timetables (running recurse())")
     //*Get the next possible timeTable
-    // console.log("posClassrooms:", posClassrooms)
     let posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
-    // console.log(`recurse(${timeTables[newTimeTablePos]}, ${JSON.stringify(posLessonsDict)}, ${JSON.stringify(posClassrooms)}, 0, 0, ${JSON.stringify(disallowedClassroomsPerTimeSlot)})`)
-    // console.log(posTimeTables)
 
-    // console.log("inc newTimeTablePos")
     //*Increment the timeTablePos
     let newTimeTablePos = timeTablePos + 1;
 
-    // console.log("Looping through the next possible timetables")
     //*For each possible table...
     posTimeTables.forEach(posTimeTable=>{
-        // console.log(posTimeTable)
 
-        // console.log("Cloning timetables")
         let newTimeTables = timeTables.map(timeTable=>timeTable.clone());
         
-        // console.log("Adding the timetable chosen to the array of timetables")
         //*We add it to the array of tables
         newTimeTables[timeTablePos] = posTimeTable;
 
-        // console.log("Setting up the calculations the classrooms disallowed per time slot")
         //*We calculate the NOW disallowed classroomsPerTimeSlot
         let timeTableMatrix = posTimeTable.turnIntoMatrix();
         let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
         
-        // console.log("Looping over the time table matrix and taking the classroom and adding it to the disallowed list at the day and period")
         for(let day = 0; day<timeTableMatrix.length; day++){
             for(let period = 0; period<timeTableMatrix[day].length; period++){
                 let classroom = timeTableMatrix[day][period].classroom;
@@ -131,7 +118,6 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
             }
         }
         
-        // console.log("Starting next recurse")
         let results = timeTablesRecurse(newTimeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
         solutions.push(...results);
     })
@@ -139,7 +125,9 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
 }
 
 async function getTables(days : number, periodsPerDay : number[], lessonsDicts : object[], possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[][] | undefined>{
-    console.log("posClassrooms:", possibleClassrooms)
+    //*Reset the transposition table
+    nextTimeTableTT = {}
+
     let possibleLessons = getAllKeys(lessonsDicts)
     let constraintsText = await getFuncConstraints(possibleLessons, possibleClassrooms, paragraph);
 
@@ -156,7 +144,6 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDicts :
         let results : TimeTable[][] = []
         let bannedClassrooms = generate2DArray(days, periodsPerDay);
         let blankTimeTables = setUpTimeTables(amTimetables, days, constraints, periodsPerDay)
-        console.log("posClassrooms:", possibleClassrooms)
         results = timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
         console.log(results)
 
@@ -195,10 +182,8 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     if(!checkCanFinish(periodsPerDay, lessonsDicts)){
         throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
     }
-    console.log("posClassrooms:", possibleClassrooms)
     let amTimeTables = lessonsDicts.length;
     let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
-    console.log(`finished getting pos tables`)
     console.log(results)
     if(results){
         let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
@@ -249,9 +234,3 @@ let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"math
 if(results){
     console.log(results[0])
 }
-
-// let results = await entireProcess(2, [3,3], {"maths":4, "english":3, "physics":1}, ["s11","s10"], "Maths cannot be in s11",
-//      "Minimize travelling between different classrooms")
-// if(results){
-//     console.log(results[0].turnIntoMatrix())
-// }
