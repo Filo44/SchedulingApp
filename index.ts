@@ -84,13 +84,10 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
     // console.log("posClassrooms:", posClassrooms)
 
     //*Checks if on the last (As we then increment it later before calling recurse)
-    if(timeTablePos + 1>= timeTables.length){
+    if(timeTablePos >= timeTables.length){
         return [timeTables];
     }
 
-    // console.log("inc newTimeTablePos")
-    //*Increment the timeTablePos
-    let newTimeTablePos = timeTablePos + 1;
 
     // console.log("setting poslessonsdict to the timetablepos in posLessonsDicts")
     let posLessonsDict = posLessonsDicts[timeTablePos]
@@ -101,9 +98,13 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
     // console.log("getting next possible timetables (running recurse())")
     //*Get the next possible timeTable
     // console.log("posClassrooms:", posClassrooms)
-    let posTimeTables = recurse(timeTables[newTimeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
+    let posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
     // console.log(`recurse(${timeTables[newTimeTablePos]}, ${JSON.stringify(posLessonsDict)}, ${JSON.stringify(posClassrooms)}, 0, 0, ${JSON.stringify(disallowedClassroomsPerTimeSlot)})`)
     // console.log(posTimeTables)
+
+    // console.log("inc newTimeTablePos")
+    //*Increment the timeTablePos
+    let newTimeTablePos = timeTablePos + 1;
 
     // console.log("Looping through the next possible timetables")
     //*For each possible table...
