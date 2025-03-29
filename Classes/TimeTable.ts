@@ -11,12 +11,12 @@ export default class TimeTable{
         this.days = days;
     }
 
-    checkConstraints(){
+    checkConstraints(chosenClassroom : string, chosenLesson : string, dayPos : number, periodPos : number){
         let matrix = this.turnIntoMatrix();
         for(let i = 0; i<this.constraints.length; i++){
             let constraint = this.constraints[i]
             try{
-                let result = constraint(matrix);
+                let result = constraint(matrix, chosenClassroom, chosenLesson, dayPos, periodPos);
                 if(result==false){
                     return false;
                 }

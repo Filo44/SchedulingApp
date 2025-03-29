@@ -58,7 +58,7 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
             //*Creates new timeslot with chosen params
             newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(chosenLesson, chosenClassroom)
 
-            if(newTimeTable.checkConstraints()){
+            if(newTimeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)){
                 //TODO Figure out a way to move the next day and period calcs outside without breaking newTimeTable.days[daypos]...
                 let newDayPos = dayPos;
                 let newPeriodPos = periodPos;
