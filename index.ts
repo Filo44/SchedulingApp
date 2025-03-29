@@ -4,7 +4,7 @@ import TimeTable from "./Classes/TimeTable";
 import getEval from "./Utils/getEvals";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
-let nextTimeTableTT : object;
+let nextTimeTableTT : Record<string, TimeTable[]>;
 
 function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
     let days : DayTable[] = [];
@@ -93,8 +93,16 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
     //*This will be an array of the possible timeTable combinations (ie possible "timeTables" var)
     let solutions : TimeTable[][] = [];
     
-    //*Get the next possible timeTable
-    let posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
+    let posTimeTables : TimeTable[];
+    let key = JSON.stringify(posLessonsDict) + JSON.stringify(disallowedClassroomsPerTimeSlot);
+    let val = nextTimeTableTT[key];
+    if(val){
+        posTimeTables = val.map(tt=>tt.clone());
+    }else{
+        //*Get the next possible timeTable
+        posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
+        nextTimeTableTT[key] = posTimeTables;
+    }
 
     //*Increment the timeTablePos
     let newTimeTablePos = timeTablePos + 1;
@@ -184,7 +192,7 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     }
     let amTimeTables = lessonsDicts.length;
     let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
-    console.log(results)
+    return results
     if(results){
         let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
         return newResults;
@@ -229,7 +237,7 @@ function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
 }
 
 let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
-    "No restrictions",
+    "Maths can't be in s11",
      "Minimize travelling between different classrooms")
 if(results){
     console.log(results[0])
