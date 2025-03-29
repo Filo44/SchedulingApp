@@ -37,11 +37,9 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
     actualPosLessons.forEach(chosenLesson=>{
         posClassrooms.forEach(chosenClassroom=>{
             if(timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)){
-                //*Clones the >>
-                let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
 
                 //*Disallowing the classroom chosen for the period chosen
-                newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
+                disallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
 
                 //*Decrements the lesson
                 posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] - 1;
@@ -67,7 +65,7 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                     newPeriodPos++;
                 }
 
-                let result = recurse(timeTable, posLessonsDict, posClassrooms, newDayPos, newPeriodPos, newDisallowedClassroomsPerTimeSlot);
+                let result = recurse(timeTable, posLessonsDict, posClassrooms, newDayPos, newPeriodPos, disallowedClassroomsPerTimeSlot);
                 //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
                 solutions.push(...result);
 
@@ -77,6 +75,9 @@ function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms :
                 }else{
                     posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] + 1;
                 }
+
+                //*Restoring the disallowedClassroomsPerTimeSlot
+                disallowedClassroomsPerTimeSlot[dayPos][periodPos].pop();
             }
         })
     })
