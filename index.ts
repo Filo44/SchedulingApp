@@ -26,65 +26,94 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     return timeTables;
 }
 
-function recurse(timeTable : TimeTable, posLessonsDict : object, posClassrooms : string[], dayPos : number, periodPos : number, disallowedClassroomsPerTimeSlot : string[][][]) : TimeTable[]{
-    if(timeTable.isFinished(dayPos, periodPos)){
-        return [timeTable];
-    }
-    let solutions : TimeTable[] = [];
-    let posLessons = Object.keys(posLessonsDict);
-    let actualPosLessons = posLessons.filter(lesson=>!(disallowedClassroomsPerTimeSlot[dayPos][periodPos].includes(lesson)));
+function recurse(
+    timeTable: TimeTable,
+    posLessonsDict: Record<string, number>,
+    posClassrooms: string[],
+    dayPos: number,
+    periodPos: number,
+    disallowedClassroomsPerTimeSlot: Set<string>[][]
+): TimeTable[] {
+    const solutions: TimeTable[] = [];
+    const stack: {
+        timeTable: TimeTable;
+        posLessonsDict: Record<string, number>;
+        posClassrooms: string[];
+        dayPos: number;
+        periodPos: number;
+        disallowedClassroomsPerTimeSlot: Set<string>[][];
+    }[] = [{ timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }]; // Initial state
 
-    actualPosLessons.forEach(chosenLesson=>{
-        posClassrooms.forEach(chosenClassroom=>{
-            if(timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)){
+    while (stack.length > 0) {
+        const currentState = stack.pop()!; // '!' because we know stack.length > 0
+        const {
+            timeTable,
+            posLessonsDict,
+            posClassrooms,
+            dayPos,
+            periodPos,
+            disallowedClassroomsPerTimeSlot,
+        } = currentState;
 
-                //*Disallowing the classroom chosen for the period chosen
-                disallowedClassroomsPerTimeSlot[dayPos][periodPos].push(chosenClassroom)
+        if (timeTable.isFinished(dayPos, periodPos)) {
+            solutions.push(timeTable);
+            continue; // Go to the next iteration of the while loop
+        }
 
-                //*Decrements the lesson
-                posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] - 1;
-                //*If there are no more periods to fill, the lesson is deleted from the object
-                let deleted = false;
-                if(posLessonsDict[chosenLesson]<1){
-                    delete posLessonsDict[chosenLesson];
-                    deleted = true;
+        const actualPosLessons = Object.keys(posLessonsDict).filter(
+            (lesson) => !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
+        );
+
+        for (const chosenLesson of actualPosLessons) {
+            for (const chosenClassroom of posClassrooms) {
+                if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
+                    processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack)
                 }
-
-                //*Creates new timeslot with chosen params
-                timeTable.days[dayPos].periods[periodPos] = new TimeSlot(chosenLesson, chosenClassroom)
-
-                //TODO Figure out a way to move the next day and period calcs outside without breaking newTimeTable.days[daypos]...
-                let newDayPos = dayPos;
-                let newPeriodPos = periodPos;
-
-                //*If we are on the last day
-                if(periodPos + 1 >= timeTable.days[dayPos].amPeriods){
-                    newDayPos++;
-                    newPeriodPos = 0;
-                }else{
-                    newPeriodPos++;
-                }
-
-                let result = recurse(timeTable, posLessonsDict, posClassrooms, newDayPos, newPeriodPos, disallowedClassroomsPerTimeSlot);
-                //* Results will always be an array, either of the timetable or the solutions. Could be empty though.
-                solutions.push(...result);
-
-                //*Restore posLessonDict
-                if(deleted){
-                    posLessonsDict[chosenLesson] = 1;
-                }else{
-                    posLessonsDict[chosenLesson] = posLessonsDict[chosenLesson] + 1;
-                }
-
-                //*Restoring the disallowedClassroomsPerTimeSlot
-                disallowedClassroomsPerTimeSlot[dayPos][periodPos].pop();
             }
-        })
-    })
+        }
+    }
     return solutions;
 }
 
-function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : string[][][]) : TimeTable[][]{
+function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string, stack){
+    const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
+    newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
+        chosenLesson,
+        chosenClassroom
+    );
+
+    const newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day) =>
+        day.map((period) => new Set(period))
+    );
+    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
+
+    const newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
+    newPosLessonsDict[chosenLesson]--;
+    if (newPosLessonsDict[chosenLesson] < 1) {
+        delete newPosLessonsDict[chosenLesson];
+    }
+
+    let newDayPos = dayPos;
+    let newPeriodPos = periodPos;
+
+    if (periodPos + 1 >= newTimeTable.days[dayPos].amPeriods) {
+        newDayPos++;
+        newPeriodPos = 0;
+    } else {
+        newPeriodPos++;
+    }
+    // Push the *new* state onto the stack
+    stack.push({
+        timeTable: newTimeTable,
+        posLessonsDict: newPosLessonsDict,
+        posClassrooms: posClassrooms,
+        dayPos: newDayPos,
+        periodPos: newPeriodPos,
+        disallowedClassroomsPerTimeSlot: newDisallowedClassroomsPerTimeSlot,
+    });
+}
+
+function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<string, number>[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : Set<string>[][]) : TimeTable[][]{
 
     //*Checks if on the last (As we then increment it later before calling recurse)
     if(timeTablePos >= timeTables.length){
@@ -124,7 +153,7 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
         for(let day = 0; day<timeTableMatrix.length; day++){
             for(let period = 0; period<timeTableMatrix[day].length; period++){
                 let classroom = timeTableMatrix[day][period].classroom;
-                newDisallowedClassroomsPerTimeSlot[day][period].push(classroom);
+                newDisallowedClassroomsPerTimeSlot[day][period].add(classroom);
             }
         }
         
@@ -134,7 +163,7 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : object[],
     return solutions
 }
 
-async function getTables(days : number, periodsPerDay : number[], lessonsDicts : object[], possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[][] | undefined>{
+async function getTables(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[][] | undefined>{
     //*Reset the transposition table
     nextTimeTableTT = {}
 
@@ -152,7 +181,7 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDicts :
         }
 
         let results : TimeTable[][] = []
-        let bannedClassrooms = generate2DArray(days, periodsPerDay);
+        let bannedClassrooms = generate2DSet(days, periodsPerDay);
         let blankTimeTables = setUpTimeTables(amTimetables, days, constraints, periodsPerDay)
         results = timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
         console.log(results)
@@ -188,7 +217,7 @@ async function orderTables(possibleLessons : string[], possibleClassrooms : stri
     }
 }
 
-async function entireProcess(days : number, periodsPerDay : number[], lessonsDicts : object[], possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
+async function entireProcess(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
     if(!checkCanFinish(periodsPerDay, lessonsDicts)){
         throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
     }
@@ -201,12 +230,13 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     }
 }
 
-function generate2DArray(amDays : number, amPeriods : number[]) {
-    let res : string[][][] = [];
+function generate2DSet(amDays : number, amPeriods : number[]) {
+    let res : Set<string>[][] = [];
     for(let i=0; i<amDays; i++){
-        let subArr : string[][] = []
+        let subArr : Set<string>[] = []
         for(let j = 0; j<amPeriods[i]; j++){
-            subArr.push([])
+            let emptySet : Set<string> = new Set<string>();
+            subArr.push(emptySet)
         }
         res.push(subArr);
     }
