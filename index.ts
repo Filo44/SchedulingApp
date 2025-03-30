@@ -44,6 +44,16 @@ function recurse(
         disallowedClassroomsPerTimeSlot: Set<string>[][];
     }[] = [{ timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }]; // Initial state
 
+    const secondStack : {
+        timeTable: TimeTable;
+        posLessonsDict: Record<string, number>;
+        posClassrooms: string[];
+        dayPos: number;
+        periodPos: number;
+        disallowedClassroomsPerTimeSlot: Set<string>[][];
+    }[] = [];
+
+    //*Calculating lessons
     while (stack.length > 0) {
         const currentState = stack.pop()!; // '!' because we know stack.length > 0
         const {
@@ -56,7 +66,7 @@ function recurse(
         } = currentState;
 
         if (timeTable.isFinished(dayPos, periodPos)) {
-            solutions.push(timeTable);
+            secondStack.push(currentState);
             continue; // Go to the next iteration of the while loop
         }
 
@@ -65,33 +75,66 @@ function recurse(
         );
 
         for (const chosenLesson of actualPosLessons) {
-            for (const chosenClassroom of posClassrooms) {
-                if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-                    processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack)
-                }
+            if (timeTable.checkLessonOnlyConstraints(chosenLesson, dayPos, periodPos)) {
+                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, null, stack)
+            }
+        }
+    }
+
+    //*Calculating classrooms
+    while (secondStack.length > 0) {
+        console.log("hello")
+        const currentState = secondStack.pop()!; // '!' because we know stack.length > 0
+        let {
+            timeTable,
+            posLessonsDict,
+            posClassrooms,
+            dayPos,
+            periodPos,
+            disallowedClassroomsPerTimeSlot,
+        } = currentState;
+        dayPos = 0;
+        periodPos = 0;
+
+        if (timeTable.isFinished(dayPos, periodPos)) {
+            solutions.push(timeTable);
+            console.log("finished")
+            continue; // Go to the next iteration of the while loop
+        }
+
+        const lesson : string = timeTable[dayPos][periodPos].lesson;
+
+        for (const chosenClassroom of posClassrooms) {
+            if (timeTable.checkOtherConstraints(chosenClassroom, lesson, dayPos, periodPos)) {
+                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, lesson, chosenClassroom, secondStack)
             }
         }
     }
     return solutions;
 }
 
-function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string, stack){
+function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string | null, stack){
     const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
     newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
         chosenLesson,
         chosenClassroom
     );
-
-    const newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day) =>
+    
+    let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day) =>
         day.map((period) => new Set(period))
     );
-    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
 
-    const newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
-    newPosLessonsDict[chosenLesson]--;
-    if (newPosLessonsDict[chosenLesson] < 1) {
-        delete newPosLessonsDict[chosenLesson];
+    let newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
+    
+    if(chosenClassroom){
+        newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
+    }else{
+        newPosLessonsDict[chosenLesson]--;
+        if (newPosLessonsDict[chosenLesson] < 1) {
+            delete newPosLessonsDict[chosenLesson];
+        }
     }
+
 
     let newDayPos = dayPos;
     let newPeriodPos = periodPos;
