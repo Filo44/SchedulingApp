@@ -2,7 +2,7 @@ import DayTable from "./DayTable";
 import TimeSlot from "./TimeSlot";
 import util from "util"; // Only needed in Node.js
 
-type ConstraintData = {
+export type ConstraintData = {
     function : CallableFunction,
     usesClassroom : boolean,
     usesLesson : boolean
@@ -21,7 +21,7 @@ export default class TimeTable{
     }
 
     divideConstraints(){
-        if(!this.divideConstraints){
+        if(!this.dividedConstraints){
             this.constraints.forEach(constraint => {
                 if(constraint.usesLesson && !constraint.usesClassroom){
                     this.lessonOnlyConstraints.push(constraint)
@@ -29,6 +29,7 @@ export default class TimeTable{
                     this.otherConstraints.push(constraint)
                 }
             })
+            this.dividedConstraints = true;
         }
     }
 
