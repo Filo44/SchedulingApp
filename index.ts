@@ -90,7 +90,7 @@ function createWorker(currentState : {
     periodPos: number;
 }) : Promise<void> {
     return new Promise((resolve, reject) => {
-        const worker = new Worker('./Utils/worker.js', {workerData: {"currentState": currentState}}); // Your worker file
+        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentState": JSON.stringify(currentState)}}); // Your worker file
 
         worker.on('exit', (code) => {
             if (code === 0) {
