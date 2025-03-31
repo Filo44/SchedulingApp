@@ -90,7 +90,18 @@ function createWorker(currentState : {
     periodPos: number;
 }) : Promise<void> {
     return new Promise((resolve, reject) => {
-        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentStateString": JSON.stringify(currentState)}, timeTable:}); // Your worker file
+        let stringConstraints : any= currentState.timeTable.constraints;
+        stringConstraints = stringConstraints.map(constraint=>{
+            return {
+                function: constraint.function.toString(),
+                usesClassroom: constraint.usesClassroom,
+                usesLesson: constraint.usesLesson
+            }
+        })
+        let stringableTimeTable = currentState.timeTable;
+        //*Remove the constraints from the timeTable
+        stringableTimeTable.constraints = [];
+        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentStateString": JSON.stringify(currentState), "stringConstraints": stringConstraints, "stringableTimeTable": stringableTimeTable}}); // Your worker file
 
         worker.on('exit', (code) => {
             if (code === 0) {
@@ -114,7 +125,7 @@ function createWorker(currentState : {
     })
 }
 
-export function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string | null, stack){
+function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string | null, stack){
     const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
     newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
         chosenLesson,
