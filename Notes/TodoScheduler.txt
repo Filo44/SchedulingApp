@@ -1,4 +1,9 @@
 TODO for Scheduler:
-- Class overlap banning doesn't seem to be working, check
 - Make quicker i.e. scale better (NOW, as it scales actually horribly)
+    - Divide the classroom and lesson chosing as chosing classrooms doesn't OFTEN impact next lesson
+        - Firstly, for added optimisations, I would ask gemini to also have 2 boolean value (add to the structure, array of obj with function, usesLesson and usesClassroom properties) on whether the function references classrooms and/or lessonsDicts
+        - Then I would firstly calculate the lessons (I don't know whether the order would matter) whilst checking the lesson only constraints step by step (as done now)
+        - Then I would then calculate the classrooms whilst checking the rest of the constraints step by step i.e. like now just ignore the time slots after the curr one which don't have a classroom assigned 
+- Class overlap banning doesn't seem to be working, check
+
 - Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")

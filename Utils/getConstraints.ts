@@ -19,12 +19,23 @@ const generationConfigGeneral = {
 export async function getFuncConstraints(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) {
   const generationConfig = {
     ...generationConfigGeneral,
-    systemInstruction:`Your job is to create an array of strings which contain in them callable functions in Javascript which takes the following parameters: "timetableMatrix"  which is a 2d array, "chosenClassroom" which is a string containing the name of a classroom, "chosenLesson" which is a string containing the name of a lesson, "dayPos" which is the index of the day of the first empty time slot in timetableMatrix (explained further) and "periodPos" which is the index of the period in the day (at index "dayPos") of the first empty time slot. timetableMatrix represents a time table. The time slots can be accessed by accessing the parameter "timetableMatrix" like this : timetableMatrix[dayIndex][periodIndex]. Each element has two properties: "classroom" and "lesson" which can be accessed like this:  "timetableMatrix[dayIndex][periodIndex].classroom" and  "timetableMatrix[dayIndex][periodIndex].lesson" respectively. You will receive three things after this, a list of the lessons, a list of the classrooms and a paragraph which details/lists different constraints this time table must have. Your job is to create a javascript function for each of these constraints which, as described before, takes in: "timetableMatrix", "chosenClassroom", "chosenLesson", "dayPos" and "periodPos" and returns whether the addition of a new timeslot at position timetableMatrix[dayPos][periodPos] in the timetable "timetableMatrix" would still abide the constraint. These functions will be presented in an array of strings (these strings are the javascript functions).`,
+    systemInstruction:`Your job is to create an array of objects with three properties. The "function" property is a string which contains a callable functions in Javascript which takes the following parameters: "timetableMatrix"  which is a 2d array, "chosenClassroom" which is a string containing the name of a classroom, "chosenLesson" which is a string containing the name of a lesson, "dayPos" which is the index of the day of the first empty time slot in timetableMatrix (explained further) and "periodPos" which is the index of the period in the day (at index "dayPos") of the first empty time slot. timetableMatrix represents a time table. The time slots can be accessed by accessing the parameter "timetableMatrix" like this : timetableMatrix[dayIndex][periodIndex]. Each element has two properties: "classroom" and "lesson" which can be accessed like this:  "timetableMatrix[dayIndex][periodIndex].classroom" and  "timetableMatrix[dayIndex][periodIndex].lesson" respectively. The other two properties of this object, "usesClassroom" and "usesLesson" you must set to true if the function you wrote utilises either the "classroom" or the "lesson" to calculate whether this time slot is viable. You will receive three things after this, a list of the lessons, a list of the classrooms and a paragraph which details/lists different constraints this time table must have. Your job is to create a javascript function for each of these constraints which, as described before, takes in: "timetableMatrix", "chosenClassroom", "chosenLesson", "dayPos" and "periodPos" and returns whether the addition of a new timeslot at position timetableMatrix[dayPos][periodPos] in the timetable "timetableMatrix" would still abide the constraint. These functions will be presented in an array of strings (these strings are the javascript functions).`,
     responseMimeType: "application/json",
     responseSchema: {
-        type: Type.ARRAY,
+        type:Type.ARRAY,
         items: {
-            type: Type.STRING
+          type: Type.OBJECT,
+          properties: {
+            function:{
+              type: Type.STRING
+            },
+            usesClassroom:{
+              type: Type.BOOLEAN
+            },
+            usesLesson:{
+              type: Type.BOOLEAN
+            }
+          }
         }
     },
   };
@@ -34,7 +45,12 @@ export async function getFuncConstraints(possibleLessons : string[], possibleCla
     config: generationConfig,
     contents: prompt,
   });
-  return response.text;
+  if (!response.text) {
+    throw new Error("No response text received from Gemini");
+  }
+  console.log("response.text: ", response.text)
+  console.log("JSON.parse(response.text): ", JSON.parse(response.text))
+  return JSON.parse(response.text);
 }
 
 export async function getScoringFunctions(possibleLessons : string[], possibleClassrooms: string[], paragraph : string){

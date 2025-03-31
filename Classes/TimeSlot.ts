@@ -1,8 +1,8 @@
 export default class TimeSlot{
     lesson : string;
-    classroom : string;
+    classroom : string | null;
 
-    constructor(lesson : string, classroom : string){
+    constructor(lesson : string, classroom : string | null){
         this.lesson = lesson;
         this.classroom = classroom;
     }
