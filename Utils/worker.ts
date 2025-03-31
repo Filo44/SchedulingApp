@@ -6,6 +6,7 @@ import {parentPort, workerData} from "worker_threads";
 import {processState} from "../index";
 
 let {currentStateString} = workerData;
+console.log(currentStateString)
 let currentState = JSON.parse(currentStateString);
 
 function calculateClassrooms(currentState : {

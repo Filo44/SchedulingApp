@@ -3,7 +3,7 @@ import DayTable from "./Classes/DayTable";
 import TimeTable, { ConstraintData } from "./Classes/TimeTable";
 import getEval from "./Utils/getEvals";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
-import { Worker } from 'worker_threads';
+import { isMainThread, Worker } from 'worker_threads';
 
 let nextTimeTableTT : Record<string, TimeTable[]>;
 
@@ -90,7 +90,7 @@ function createWorker(currentState : {
     periodPos: number;
 }) : Promise<void> {
     return new Promise((resolve, reject) => {
-        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentState": JSON.stringify(currentState)}}); // Your worker file
+        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentStateString": JSON.stringify(currentState)}, timeTable:}); // Your worker file
 
         worker.on('exit', (code) => {
             if (code === 0) {
@@ -107,6 +107,8 @@ function createWorker(currentState : {
                 resolve(message.data);
             }else if(message.message === "spawnNewWorker"){
                 createWorker(message.data);
+            }else if(message.message === "checkConstraints"){
+                return currentState.timeTable.checkOtherConstraints(message.data.chosenClassroom, message.data.chosenLesson, message.data.dayPos, message.data.periodPos)
             }
         })
     })
@@ -328,9 +330,11 @@ function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
     return true;
 }
 
-let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
-    "Maths can't be in s11",
-     "Minimize travelling between different classrooms")
-if(results){
-    console.log(results[0])
+if(isMainThread){
+    let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
+        "Maths can't be in s11",
+         "Minimize travelling between different classrooms")
+    if(results){
+        console.log(results[0])
+    }
 }
