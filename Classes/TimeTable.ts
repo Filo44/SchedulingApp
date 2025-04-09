@@ -76,9 +76,9 @@ export default class TimeTable{
         return JSON.stringify(this.turnIntoMatrix());
     }
 
-    // toString(){
-    //     return JSON.stringify(this.turnIntoMatrix())
-    // }
+    toString(){
+        return JSON.stringify(this.turnIntoMatrix())
+    }
 
     clone() {
         return new TimeTable(
