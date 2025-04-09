@@ -26,14 +26,14 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     return timeTables;
 }
 
-function recurse(
+async function recurse(
     timeTable: TimeTable,
     posLessonsDict: Record<string, number>,
     posClassrooms: string[],
     dayPos: number,
     periodPos: number,
     disallowedClassroomsPerTimeSlot: Set<string>[][]
-): TimeTable[] {
+): Promise<TimeTable[]> {
     const solutions: TimeTable[] = [];
     const stack: {
         timeTable: TimeTable;
@@ -43,15 +43,6 @@ function recurse(
         periodPos: number;
         disallowedClassroomsPerTimeSlot: Set<string>[][];
     }[] = [{ timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }]; // Initial state
-
-    const secondStack : {
-        timeTable: TimeTable;
-        posLessonsDict: Record<string, number>;
-        posClassrooms: string[];
-        dayPos: number;
-        periodPos: number;
-        disallowedClassroomsPerTimeSlot: Set<string>[][];
-    }[] = [];
 
     //*Calculating lessons
     while (stack.length > 0) {
@@ -68,7 +59,7 @@ function recurse(
         if (timeTable.isFinished(dayPos, periodPos)) {
             currentState.dayPos = 0;
             currentState.periodPos = 0;
-            secondStack.push(currentState);
+            solutions.push(timeTable.clone());
             continue; // Go to the next iteration of the while loop
         }
 
@@ -78,36 +69,19 @@ function recurse(
 
         for (const chosenLesson of actualPosLessons) {
             if (timeTable.checkLessonOnlyConstraints(chosenLesson, dayPos, periodPos)) {
-                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, null, stack)
+                // Process lesson without classroom
+                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, null, stack);
+                
+                // Process with each possible classroom
+                for (const chosenClassroom of posClassrooms) {
+                    if (timeTable.checkOtherConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
+                        processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack);
+                    }
+                }
             }
         }
     }
 
-    //*Calculating classrooms
-    while (secondStack.length > 0) {
-        const currentState = secondStack.pop()!;
-        const {
-            timeTable,
-            posLessonsDict,
-            posClassrooms,
-            dayPos,
-            periodPos,
-            disallowedClassroomsPerTimeSlot,
-        } = currentState;
-
-        if (timeTable.isFinished(dayPos, periodPos)) {
-            solutions.push(timeTable);
-            continue; // Go to the next iteration of the while loop
-        }
-
-        const lesson : string = timeTable.days[dayPos].periods[periodPos].lesson;
-
-        for (const chosenClassroom of posClassrooms) {
-            if (timeTable.checkOtherConstraints(chosenClassroom, lesson, dayPos, periodPos)) {
-                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, lesson, chosenClassroom, secondStack)
-            }
-        }
-    }
     return solutions;
 }
 
@@ -163,7 +137,7 @@ function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: num
     });
 }
 
-function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<string, number>[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : Set<string>[][]) : TimeTable[][]{
+async function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<string, number>[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : Set<string>[][]) : Promise<TimeTable[][]>{
     //*Checks if on the last (As we then increment it later before calling recurse)
     if(timeTablePos >= timeTables.length){
         return [timeTables];
@@ -181,7 +155,7 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<st
         posTimeTables = val.map(tt=>tt.clone());
     }else{
         //*Get the next possible timeTable
-        posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
+        posTimeTables = await recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
         nextTimeTableTT[key] = posTimeTables;
     }
 
@@ -189,7 +163,7 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<st
     let newTimeTablePos = timeTablePos + 1;
 
     //*For each possible table...
-    posTimeTables.forEach(posTimeTable=>{
+    for(const posTimeTable of posTimeTables){
         
         //*We add it to the array of tables
         timeTables[timeTablePos] = posTimeTable;
@@ -207,9 +181,9 @@ function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<st
             }
         }
         
-        let results = timeTablesRecurse(timeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
+        let results = await timeTablesRecurse(timeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
         solutions.push(...results);
-    })
+    }
     return solutions
 }
 
@@ -241,7 +215,7 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDicts :
         let results : TimeTable[][] = []
         let bannedClassrooms = generate2DSet(days, periodsPerDay);
         let blankTimeTables = setUpTimeTables(amTimetables, days, constraints, periodsPerDay)
-        results = timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
+        results = await timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
         console.log(results)
 
         
@@ -282,11 +256,11 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     }
     let amTimeTables = lessonsDicts.length;
     let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
+    // if(results){
+    //     let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
+    //     return newResults;
+    // }
     return results
-    if(results){
-        let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
-        return newResults;
-    }
 }
 
 function generate2DSet(amDays : number, amPeriods : number[]) {
@@ -327,6 +301,7 @@ function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
     return true;
 }
 
+// Main execution
 let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
     "Maths can't be in s11",
      "Minimize travelling between different classrooms")
