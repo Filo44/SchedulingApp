@@ -3,7 +3,6 @@ import DayTable from "./Classes/DayTable";
 import TimeTable, { ConstraintData } from "./Classes/TimeTable";
 import getEval from "./Utils/getEvals";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
-import { isMainThread, Worker } from 'worker_threads';
 
 let nextTimeTableTT : Record<string, TimeTable[]>;
 
@@ -45,8 +44,6 @@ async function recurse(
         disallowedClassroomsPerTimeSlot: Set<string>[][];
     }[] = [{ timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }]; // Initial state
 
-    let worker_threads : Promise<void>[] = [];
-
     //*Calculating lessons
     while (stack.length > 0) {
         const currentState = stack.pop()!; // '!' because we know stack.length > 0
@@ -62,7 +59,7 @@ async function recurse(
         if (timeTable.isFinished(dayPos, periodPos)) {
             currentState.dayPos = 0;
             currentState.periodPos = 0;
-            worker_threads.push(createWorker(currentState));
+            solutions.push(timeTable.clone());
             continue; // Go to the next iteration of the while loop
         }
 
@@ -72,57 +69,20 @@ async function recurse(
 
         for (const chosenLesson of actualPosLessons) {
             if (timeTable.checkLessonOnlyConstraints(chosenLesson, dayPos, periodPos)) {
-                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, null, stack)
+                // Process lesson without classroom
+                processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, null, stack);
+                
+                // Process with each possible classroom
+                for (const chosenClassroom of posClassrooms) {
+                    if (timeTable.checkOtherConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
+                        processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack);
+                    }
+                }
             }
         }
     }
 
-    await Promise.all(worker_threads);
-
     return solutions;
-}
-
-function createWorker(currentState : {
-    timeTable: TimeTable;
-    posLessonsDict: Record<string, number>;
-    posClassrooms: string[];
-    dayPos: number;
-    periodPos: number;
-}) : Promise<void> {
-    return new Promise((resolve, reject) => {
-        let stringConstraints : any= currentState.timeTable.constraints;
-        stringConstraints = stringConstraints.map(constraint=>{
-            return {
-                function: constraint.function.toString(),
-                usesClassroom: constraint.usesClassroom,
-                usesLesson: constraint.usesLesson
-            }
-        })
-        let stringableTimeTable = currentState.timeTable;
-        //*Remove the constraints from the timeTable
-        stringableTimeTable.constraints = [];
-        const worker = new Worker('./Utils/worker.ts', {workerData: {"currentStateString": JSON.stringify(currentState), "stringConstraints": stringConstraints, "stringableTimeTable": stringableTimeTable}}); // Your worker file
-
-        worker.on('exit', (code) => {
-            if (code === 0) {
-                resolve();
-            } else {
-                reject(new Error(`Worker exited with code ${code}`));
-            }
-        });
-
-        worker.on('error', reject);
-
-        worker.on('message', (message) => {
-            if(message.message === "addToSolutions"){
-                resolve(message.data);
-            }else if(message.message === "spawnNewWorker"){
-                createWorker(message.data);
-            }else if(message.message === "checkConstraints"){
-                return currentState.timeTable.checkOtherConstraints(message.data.chosenClassroom, message.data.chosenLesson, message.data.dayPos, message.data.periodPos)
-            }
-        })
-    })
 }
 
 function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string | null, stack){
@@ -341,11 +301,10 @@ function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
     return true;
 }
 
-if(isMainThread){
-    let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
-        "Maths can't be in s11",
-         "Minimize travelling between different classrooms")
-    if(results){
-        console.log(results[0])
-    }
+// Main execution
+let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
+    "Maths can't be in s11",
+     "Minimize travelling between different classrooms")
+if(results){
+    console.log(results[0])
 }
