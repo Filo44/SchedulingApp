@@ -1,5 +1,6 @@
 TODO for Scheduler:
 - Build the genetic code
+	- Figure out why there is a "undefined":null in the lessonDictDiff
 - Tune the variables
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Oh dear god, maybe implement different days per timetable? (FIRST DO UI, this as a MAYBE)

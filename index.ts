@@ -198,6 +198,7 @@ function generateNRanTableSets(
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
         res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
+    console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
     return res
 }
 
@@ -289,91 +290,124 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
     
     //*Generate a combination for the amount specified by targetPopulationSize
     for(let i = 0; i < targetPopulationSize; i++){
-        
-        //*Generate a new chromosome
-        let chromosome : TimeTable[] = setUpTimeTables(timeTablesPerSet, amDays, parents[0][0].constraints, periodsPerDay)
-        for(let dayPos = 0; dayPos < parents[0][0].days.length; dayPos++){
-            
-            //*For each day, choose a random parent
-            let ranIndex = Math.floor(Math.random() * parents.length);
-            let chosenParent = parents[ranIndex];
+        while(true){
+            //*Generate a new chromosome
+            let chromosome : TimeTable[] = setUpTimeTables(timeTablesPerSet, amDays, parents[0][0].constraints, periodsPerDay)
+            for(let dayPos = 0; dayPos < parents[0][0].days.length; dayPos++){
+                
+                //*For each day, choose a random parent
+                let ranIndex = Math.floor(Math.random() * parents.length);
+                let chosenParent = parents[ranIndex];
 
-            //*Go through each timeTable in the timeTableSet and...
+                //*Go through each timeTable in the timeTableSet and...
+                for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+
+                    //*Set the day of those timeTables in the set to the chosen parent's day
+                    let chromosomeTimeTable = chromosome[timeTableSetPos]
+                    let chosenParentTimeTable = chosenParent[timeTableSetPos]
+                    chromosomeTimeTable.days[dayPos] = chosenParentTimeTable.days[dayPos].clone()
+
+                    //*This should keep the constraints satisfied, as they are day specific (i.e. don't have access to the other days)
+                    //* and the classrooms should not overlap as the days are copied over from a non-overlapping timetable 
+                    //* However, this does not satisfy the lessonsDict (total lessons in a timetable set) 
+                }
+            }
+
+            //* Just doing swap mutations for now
             for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+                for(let mutations = 0; mutations < mutationsPerSet; mutations++){
+                    //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
+                    let dayPos1 = Math.floor(Math.random() * amDays);
+                    let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
+                    
+                    let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
+                    let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
 
-                //*Set the day of those timeTables in the set to the chosen parent's day
-                let chromosomeTimeTable = chromosome[timeTableSetPos]
-                let chosenParentTimeTable = chosenParent[timeTableSetPos]
-                chromosomeTimeTable.days[dayPos] = chosenParentTimeTable.days[dayPos].clone()
+                    let dayPos2 = Math.floor(Math.random() * amDays);
+                    let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
 
-                //*This should keep the constraints satisfied, as they are day specific (i.e. don't have access to the other days)
-                //* and the classrooms should not overlap as the days are copied over from a non-overlapping timetable 
-                //* However, this does not satisfy the lessonsDict (total lessons in a timetable set) 
+                    let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
+                    let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
+                    
+                    chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
+                    chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
+
+                    chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                    chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
+                }
+            }
+
+            //*Fix the lessonsDictchromosome
+            //*Get the difference between the lessonsDict and the chromosome
+            for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+                //Note: This is "inverted", i.e. if there is an excess of a lesson, it will be negative, and vice versa
+                let lessonDictDiff = structuredClone(lessonsDicts[timeTableSetPos])
+                chromosome[timeTableSetPos].days.forEach(day =>{
+                    day.periods.forEach(period =>{
+                        let lesson = period.lesson;
+                        lessonDictDiff[lesson]--;
+                    })
+                })
+
+                let dayPos = 0;
+                chromosome[timeTableSetPos].days.forEach(day =>{
+                    let periodPos = 0;
+                    let breakOut = false;
+                    day.periods.forEach(period =>{
+                        let lessonsInShortage = Object.keys(lessonDictDiff).filter(key => lessonDictDiff[key] > 0);
+                        lessonsInShortage = lessonsInShortage.filter(lesson => {
+                            return chromosome[timeTableSetPos].checkConstraints(period.classroom, lesson, dayPos, periodPos)
+                        });
+
+                        if(lessonsInShortage.length == 0){
+                            console.log("No more shortage! Therefore no excess therefore fixed!")
+                            breakOut = true;
+                            return;
+                        }
+
+                        //*If there are too many
+                        if(lessonDictDiff[period.lesson] < 0){
+                            let randomLessonInShortage = lessonsInShortage[Math.floor(Math.random() * lessonsInShortage.length)];
+
+                            // Update the lessonDictDiff counts before changing the period
+                            lessonDictDiff[period.lesson]++; // Removing one instance of the current lesson
+                            lessonDictDiff[randomLessonInShortage]--; // Adding one instance of the new lesson
+                            
+                            // Change the lesson
+                            period.lesson = randomLessonInShortage;
+                        }
+                        periodPos++;
+                    })
+                    if(breakOut){
+                        return;
+                    }
+                    dayPos++;
+                })
+            
+            }
+
+            let fixed = true;
+
+            for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+                //Note: This is "inverted", i.e. if there is an excess of a lesson, it will be negative, and vice versa
+                let lessonDictDiff = structuredClone(lessonsDicts[timeTableSetPos])
+                chromosome[timeTableSetPos].days.forEach(day =>{
+                    day.periods.forEach(period =>{
+                        let lesson = period.lesson;
+                        lessonDictDiff[lesson]--;
+                    })
+                })
+                if(Object.values(lessonDictDiff).some(value => value != 0)){
+                    fixed = false;
+                }
+            }
+
+            if(fixed){
+                newPopulation.push(chromosome)
+                break;
             }
         }
 
-        //* Just doing swap mutations for now
-        for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
-            for(let mutations = 0; mutations < mutationsPerSet; mutations++){
-                //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
-                let dayPos1 = Math.floor(Math.random() * amDays);
-                let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
-                
-                let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
-                let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
-
-                let dayPos2 = Math.floor(Math.random() * amDays);
-                let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
-
-                let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
-                let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
-                
-                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
-                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
-
-                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
-                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
-            }
-        }
-
-        //*Fix the lessonsDictchromosome
-        //*Get the difference between the lessonsDict and the chromosome
-        for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
-
-            //note: This is "inverted", i.e. if there is an excess of a lesson, it will be negative, and vice versa
-            let lessonDictDiff = structuredClone(lessonsDicts[timeTableSetPos])
-            chromosome[timeTableSetPos].days.forEach(day =>{
-                day.periods.forEach(period =>{
-                    let lesson = period.lesson;
-                    lessonDictDiff[lesson]--;
-                })
-            })
-
-            //Note: Theoretically should fix in one pass right?
-            chromosome[timeTableSetPos].days.forEach(day =>{
-                day.periods.forEach(period =>{
-                    let lessonsInShortage = Object.keys(lessonDictDiff).filter(key => lessonDictDiff[key] > 0);
-
-                    if(lessonsInShortage.length == 0){
-                        console.log("No more shortage! Therefore no excess therefore fixed!")
-                    }
-
-                    //*If there are too many
-                    if(lessonDictDiff[period.lesson] < 0){
-                        let randomLessonInShortage = lessonsInShortage[Math.floor(Math.random() * lessonsInShortage.length)];
-                        
-                        // Update the lessonDictDiff counts before changing the period
-                        lessonDictDiff[period.lesson]++; // Removing one instance of the current lesson
-                        lessonDictDiff[randomLessonInShortage]--; // Adding one instance of the new lesson
-                        
-                        // Change the lesson
-                        period.lesson = randomLessonInShortage;
-                    }
-                })
-            })
-        }
-
-        newPopulation.push(chromosome)
     }
 
     return newPopulation;
