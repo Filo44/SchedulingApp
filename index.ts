@@ -76,7 +76,7 @@ function genOneRandTimeTable(
     disallowedClassroomsPerTimeSlot: Set<string>[][]
 ) : TimeTable{
     let solution : TimeTable;
-    const state: {
+    let state: {
         timeTable: TimeTable;
         posLessonsDict: Record<string, number>;
         posClassrooms: string[];
@@ -100,6 +100,8 @@ function genOneRandTimeTable(
             disallowedClassroomsPerTimeSlot,
         } = state;
 
+        console.log(`state: ${JSON.stringify(state)}`)
+
         if (timeTable.isFinished(dayPos, periodPos)) {
             solution = timeTable;
             break;
@@ -108,22 +110,27 @@ function genOneRandTimeTable(
         const actualPosLessons = Object.keys(posLessonsDict).filter(
             (lesson) => posLessonsDict[lesson] > 0 && !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
         );
+        console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
+
         const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
         const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
+        console.log(`chosenLesson: ${chosenLesson}`)
+        console.log(`chosenClassroom: ${chosenClassroom}`)
 
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-            processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, state)
+            console.log("Constraints satisfied!")
+            state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
         }
     }
     
     if (attempts >= MAX_ATTEMPTS) {
-        console.warn("Maximum attempts reached in genOneRandTimeTable. Returning the best solution found so far.");
+        throw new Error("Maximum attempts reached in genOneRandTimeTable. Returning the best solution found so far.");
     }
     
-    return solution;
+    return solution!;
 }
 
-function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string, newStateRef){
+function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string){
     const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
     newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
         chosenLesson,
@@ -165,7 +172,7 @@ function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: num
         newPeriodPos++;
     }
     // Push the *new* state onto the stack
-    newStateRef = {
+    return {
         timeTable: newTimeTable,
         posLessonsDict: newPosLessonsDict,
         posClassrooms: posClassrooms,
@@ -449,7 +456,6 @@ async function entireGeneticProcess(
 
     let prioritiesFunctions = await parseScoringFunctions(possibleLessons, possibleClassrooms, prioritiesParagraph);
     let constraintsFunctions = await parseConstraintsFunctions(possibleLessons, possibleClassrooms, constraintsParagraph);
-
 
     let initPopulation = generateNRanTableSets(populationSize, days, periodsPerDay, timeTablesPerSet, constraintsFunctions, posLessonsDicts, possibleClassrooms, bannedClassrooms);
     let results = geneticLoop(initPopulation, prioritiesFunctions, iterations, days, periodsPerDay, posLessonsDicts);

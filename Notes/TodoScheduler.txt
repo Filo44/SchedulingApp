@@ -1,5 +1,6 @@
 TODO for Scheduler:
 - Build the genetic code
+- Tune the variables
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Oh dear god, maybe implement different days per timetable? (FIRST DO UI, this as a MAYBE)
 - Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")
