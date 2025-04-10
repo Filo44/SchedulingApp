@@ -85,7 +85,12 @@ function genOneRandTimeTable(
         disallowedClassroomsPerTimeSlot: Set<string>[][];
     }= { timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }; // Initial state
 
-    while (true) {
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10000; // Prevent infinite loops
+
+    while (attempts < MAX_ATTEMPTS) {
+        attempts++;
+        
         const {
             timeTable,
             posLessonsDict,
@@ -101,7 +106,7 @@ function genOneRandTimeTable(
         }
 
         const actualPosLessons = Object.keys(posLessonsDict).filter(
-            (lesson) => !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
+            (lesson) => posLessonsDict[lesson] > 0 && !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
         );
         const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
         const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
@@ -110,6 +115,11 @@ function genOneRandTimeTable(
             processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, state)
         }
     }
+    
+    if (attempts >= MAX_ATTEMPTS) {
+        console.warn("Maximum attempts reached in genOneRandTimeTable. Returning the best solution found so far.");
+    }
+    
     return solution;
 }
 
@@ -390,7 +400,7 @@ async function parseScoringFunctions(possibleLessons : string[], possibleClassro
     if(prioritiesTexts){
         let prioritiesText = JSON.parse(prioritiesTexts)
         prioritiesText.forEach((priorityText : string) => {
-            console.log(`priority: ${prioritiesText}`)
+            console.log(`priority: ${priorityText}`)
             let callableFunction : CallableFunction = getEval(`(${priorityText})`);
             callableFunctions.push(callableFunction);
         })
@@ -447,11 +457,13 @@ async function entireGeneticProcess(
     return results;
 }
 
-
-
-let results = await entireGeneticProcess(2, [3,3],[{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"],
-    "Maths can't be in s11",
-    "Minimize travelling between different classrooms", 10, 10)
-if(results){
-    console.log(results[0])
+async function main() {
+    let results = await entireGeneticProcess(2, [3,3],[{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"],
+        "Maths can't be in s11",
+        "Minimize travelling between different classrooms", 10, 10);
+    if(results){
+        console.log(results[0])
+    }
 }
+
+main().catch(error => console.error(error));
