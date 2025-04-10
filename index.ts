@@ -29,6 +29,44 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     return timeTables;
 }
 
+function generate2DSet(amDays : number, amPeriods : number[]) {
+    let res : Set<string>[][] = [];
+    for(let i=0; i<amDays; i++){
+        let subArr : Set<string>[] = []
+        for(let j = 0; j<amPeriods[i]; j++){
+            let emptySet : Set<string> = new Set<string>();
+            subArr.push(emptySet)
+        }
+        res.push(subArr);
+    }
+    return res
+}
+
+function getAllKeys(arrayOfObjects : object[]){
+    let keys : Record<string, boolean> = {};
+    arrayOfObjects.forEach(object=>{
+        Object.keys(object).forEach(key=>{
+            keys[key] = true;
+        })
+    })
+    return Object.keys(keys)
+}
+
+function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
+    let periodsPerTimeTable = periodsPerDay.reduce((partialSum, a) => partialSum + a, 0);
+    for(let i = 0; i < periodsPerDay.length; i++){
+        let lessonsDictThisDay = lessonsDicts[i];
+        
+        let values = Object.values(lessonsDictThisDay)
+        let sum = values.reduce((partialSum, a) => partialSum + a, 0);
+
+        if(sum<periodsPerTimeTable){
+            return false;
+        }
+    }
+    return true;
+}
+
 function genOneRandTimeTable(
     timeTable: TimeTable,
     posLessonsDict: Record<string, number>,
@@ -75,6 +113,11 @@ function genOneRandTimeTable(
     return solution;
 }
 
+function generateNRanTables(n : number, amDays : number, periodsPerDay : number[]) : TimeTable[][]{
+    let res : TimeTable[][] = []
+    
+}
+
 function genOneRandSetOfTimeTables(
     timeTables : TimeTable[],
     posLessonsDicts : Record<string, number>[],
@@ -102,19 +145,6 @@ function genOneRandSetOfTimeTables(
     }
 
     return genOneRandSetOfTimeTables(timeTables, posLessonsDicts, posClassrooms, timeTablePos + 1, newDisallowedClassroomsPerTimeSlot);
-}
-
-
-function recursiveGeneticLoop(
-    population : TimeTable[][],
-    prioritiesFunctions : CallableFunction[],
-    iterationNumber : number,
-    iterationCutOffNumber : number
-){
-    const populationSize = population.length;
-    let scores = getScores(prioritiesFunctions, population);
-    let newParents = selectParents(population, scores, elitismCount);
-
 }
 
 function tournamentSelection(population: TimeTable[][], fitnessScores: number[], tournamentSize: number): TimeTable[] {
@@ -185,7 +215,8 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
 
         //* Just doing swap mutations for now
         for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
-            for(let mutations = 0; mutations < 10; mutations++){
+            for(let mutations = 0; mutations < mutationsPerSet; mutations++){
+                //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
                 let dayPos1 = Math.floor(Math.random() * amDays);
                 let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
                 
@@ -202,14 +233,9 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
 
                 chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
-                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;
-                
+                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
             }
-            
-            
         }
-
-
 
         //*Fix the lessonsDictchromosome
         //*Get the difference between the lessonsDict and the chromosome
@@ -254,10 +280,27 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
     return newPopulation;
 }
 
-function generateNRanTables(n : number, amDays : number, periodsPerDay : number[]) : TimeTable[][]{
-    let res : TimeTable[][] = []
-    
+function geneticLoop(
+    initPopulation : TimeTable[][],
+    prioritiesFunctions : CallableFunction[],
+    iterations : number,
+    amDays : number,
+    periodsPerDay : number[],
+    lessonsDicts : Record<string, number>[]
+) : TimeTable[][]{
+    const populationSize = initPopulation.length;
+    const timeTablesPerSet = initPopulation[0].length;    
+    //TODO: Check whether this cloning is necessary
+    let population = initPopulation.map(chromosome => chromosome.map(timeTable => timeTable.clone()));
+
+    for(let iterationNumber = 0; iterationNumber < iterations; iterationNumber++){
+        let scores = getScores(prioritiesFunctions, population);
+        let newParents = selectParents(population, scores, elitismCount);
+        population = breed(newParents, populationSize, timeTablesPerSet, amDays, periodsPerDay, lessonsDicts);
+    }
+    return population;
 }
+
 
 async function parseScoringFunctions(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) : Promise<CallableFunction[]>{
     let callableFunctions : CallableFunction[] = [];
@@ -319,33 +362,6 @@ async function getTables(days : number, periodsPerDay : number[], lessonsDicts :
     }
 }
 
-async function orderTables(possibleLessons : string[], possibleClassrooms : string[], paragraph : string, timeTables : TimeTable[][]) : Promise<TimeTable[][] | undefined>{
-    let prioritiesTexts = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
-
-    if(prioritiesTexts){
-        let prioritiesText = JSON.parse(prioritiesTexts)[0]
-        console.log(`priority: ${prioritiesText}`)
-        let callableFunction : CallableFunction = getEval(`(${prioritiesText})`);
-        let newTimeTables = timeTables.map(timeTables => {
-            return timeTables.map(timeTable => timeTable.clone())
-        });
-        newTimeTables.sort((a, b)=>{
-            let scoreA = 0;
-            let scoreB = 0;
-
-            a.forEach(timeTable => {
-                scoreA += callableFunction(timeTable.turnIntoMatrix())
-            })
-            b.forEach(timeTable => {
-                scoreB += callableFunction(timeTable.turnIntoMatrix())
-            })
-            return scoreB - scoreA;
-        })
-        
-        return newTimeTables;
-    }
-}
-
 async function entireProcess(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
     if(!checkCanFinish(periodsPerDay, lessonsDicts)){
         throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
@@ -359,43 +375,9 @@ async function entireProcess(days : number, periodsPerDay : number[], lessonsDic
     }
 }
 
-function generate2DSet(amDays : number, amPeriods : number[]) {
-    let res : Set<string>[][] = [];
-    for(let i=0; i<amDays; i++){
-        let subArr : Set<string>[] = []
-        for(let j = 0; j<amPeriods[i]; j++){
-            let emptySet : Set<string> = new Set<string>();
-            subArr.push(emptySet)
-        }
-        res.push(subArr);
-    }
-    return res
-}
+async function entireGeneticProcess()
 
-function getAllKeys(arrayOfObjects : object[]){
-    let keys : Record<string, boolean> = {};
-    arrayOfObjects.forEach(object=>{
-        Object.keys(object).forEach(key=>{
-            keys[key] = true;
-        })
-    })
-    return Object.keys(keys)
-}
 
-function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
-    let periodsPerTimeTable = periodsPerDay.reduce((partialSum, a) => partialSum + a, 0);
-    for(let i = 0; i < periodsPerDay.length; i++){
-        let lessonsDictThisDay = lessonsDicts[i];
-        
-        let values = Object.values(lessonsDictThisDay)
-        let sum = values.reduce((partialSum, a) => partialSum + a, 0);
-
-        if(sum<periodsPerTimeTable){
-            return false;
-        }
-    }
-    return true;
-}
 
 let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
     "Maths can't be in s11",
