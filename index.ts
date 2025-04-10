@@ -107,17 +107,84 @@ function genOneRandTimeTable(
         const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
 
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-            processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack)
+            processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, state)
         }
     }
     return solution;
 }
 
-function generateNRanTables(n : number, amDays : number, periodsPerDay : number[]) : TimeTable[][]{
-    let res : TimeTable[][] = []
+function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string, newStateRef){
+    const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
+    newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
+        chosenLesson,
+        chosenClassroom
+    );
     
+    let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day, dayIndex) => {
+        if (dayIndex === dayPos) {
+            return day.map((period, periodIndex) => {
+                if (periodIndex === periodPos) {
+                    return new Set(period); // Only clone the set we'll modify
+                }
+                return period; // Reuse other periods in this day
+            });
+        }
+        return day; // Reuse other days completely
+    });
+
+
+    let newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
+    
+    if(chosenClassroom){
+        newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
+    }else{
+        newPosLessonsDict[chosenLesson]--;
+        if (newPosLessonsDict[chosenLesson] < 1) {
+            delete newPosLessonsDict[chosenLesson];
+        }
+    }
+
+
+    let newDayPos = dayPos;
+    let newPeriodPos = periodPos;
+
+    if (periodPos + 1 >= newTimeTable.days[dayPos].amPeriods) {
+        newDayPos++;
+        newPeriodPos = 0;
+    } else {
+        newPeriodPos++;
+    }
+    // Push the *new* state onto the stack
+    newStateRef = {
+        timeTable: newTimeTable,
+        posLessonsDict: newPosLessonsDict,
+        posClassrooms: posClassrooms,
+        dayPos: newDayPos,
+        periodPos: newPeriodPos,
+        disallowedClassroomsPerTimeSlot: newDisallowedClassroomsPerTimeSlot,
+    };
 }
 
+
+function generateNRanTableSets(
+    n : number,
+    amDays : number, 
+    periodsPerDay : number[], 
+    timeTablesPerSet : number, 
+    constraints : CallableFunction[], 
+    posLessonsDicts : Record<string, number>[], 
+    posClassrooms : string[],
+    disallowedClassroomsPerTimeSlot : Set<string>[][]
+) : TimeTable[][]{
+    let res : TimeTable[][] = []
+    for(let i = 0; i<n; i++){
+        let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
+        res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
+    }
+    return res
+}
+
+//Note: Doesn't really make sense as a recursive function...
 function genOneRandSetOfTimeTables(
     timeTables : TimeTable[],
     posLessonsDicts : Record<string, number>[],
@@ -145,6 +212,21 @@ function genOneRandSetOfTimeTables(
     }
 
     return genOneRandSetOfTimeTables(timeTables, posLessonsDicts, posClassrooms, timeTablePos + 1, newDisallowedClassroomsPerTimeSlot);
+}
+
+function getScores(callableFunctions : CallableFunction[], timeTables : TimeTable[][]) : number[]{
+    let scores : number[] = timeTables.map((timeTableSet : TimeTable[])=>{
+        let score = 0;
+
+        timeTableSet.forEach(timeTable => {
+            callableFunctions.forEach((callableFunction : CallableFunction) => {
+                score += callableFunction(timeTable.turnIntoMatrix())
+            })
+        })
+        return score;
+    })
+    
+    return scores;
 }
 
 function tournamentSelection(population: TimeTable[][], fitnessScores: number[], tournamentSize: number): TimeTable[] {
@@ -301,7 +383,6 @@ function geneticLoop(
     return population;
 }
 
-
 async function parseScoringFunctions(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) : Promise<CallableFunction[]>{
     let callableFunctions : CallableFunction[] = [];
     let prioritiesTexts = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
@@ -320,68 +401,57 @@ async function parseScoringFunctions(possibleLessons : string[], possibleClassro
     return callableFunctions;
 }
 
-function getScores(callableFunctions : CallableFunction[], timeTables : TimeTable[][]) : number[]{
-    let scores : number[] = timeTables.map((timeTableSet : TimeTable[])=>{
-        let score = 0;
-
-        timeTableSet.forEach(timeTable => {
-            callableFunctions.forEach((callableFunction : CallableFunction) => {
-                score += callableFunction(timeTable.turnIntoMatrix())
-            })
-        })
-        return score;
-    })
-    
-    return scores;
-}
-
-async function getTables(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[][] | undefined>{
-    //*Reset the transposition table
-    nextTimeTableTT = {}
-
-    let possibleLessons = getAllKeys(lessonsDicts)
+async function parseConstraintsFunctions(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) : Promise<CallableFunction[]>{
+    let constraints : CallableFunction[] = []
     let constraintsText = await getFuncConstraints(possibleLessons, possibleClassrooms, paragraph);
 
     if(constraintsText){
         let constraintsArr = JSON.parse(constraintsText);
-        let constraints : CallableFunction[] = []
+
         for(let i=0; i<constraintsArr.length; i++){
             let constraint = constraintsArr[i];
             console.log(`constraint: ${constraint}`)
             let callableFunction : CallableFunction = getEval(`(${constraint})`);
             constraints.push(callableFunction);
         }
-
-        let results : TimeTable[][] = []
-        let bannedClassrooms = generate2DSet(days, periodsPerDay);
-        let blankTimeTables = setUpTimeTables(amTimetables, days, constraints, periodsPerDay)
-        results = timeTablesRecurse(blankTimeTables, lessonsDicts, possibleClassrooms, 0, bannedClassrooms)
-        console.log(results)
-
-        return results;
     }
+
+    return constraints;
 }
 
-async function entireProcess(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], constraintsParagraph : string, prioritiesParagraph : string){
-    if(!checkCanFinish(periodsPerDay, lessonsDicts)){
+async function entireGeneticProcess(
+    days : number, 
+    periodsPerDay : number[],
+    posLessonsDicts : Record<string, number>[], 
+    possibleClassrooms : string[], 
+    constraintsParagraph : string, 
+    prioritiesParagraph : string,
+    iterations : number,
+    populationSize : number
+){
+    if(!checkCanFinish(periodsPerDay, posLessonsDicts)){
         throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
     }
-    let amTimeTables = lessonsDicts.length;
-    let results = await getTables(days, periodsPerDay, lessonsDicts, possibleClassrooms, constraintsParagraph, amTimeTables);
-    return results
-    if(results){
-        let newResults = await orderTables(getAllKeys(lessonsDicts), possibleClassrooms, prioritiesParagraph, results);
-        return newResults;
-    }
+
+    let timeTablesPerSet = posLessonsDicts.length;
+    let possibleLessons = getAllKeys(posLessonsDicts)
+    let bannedClassrooms = generate2DSet(days, periodsPerDay);
+
+    let prioritiesFunctions = await parseScoringFunctions(possibleLessons, possibleClassrooms, prioritiesParagraph);
+    let constraintsFunctions = await parseConstraintsFunctions(possibleLessons, possibleClassrooms, constraintsParagraph);
+
+
+    let initPopulation = generateNRanTableSets(populationSize, days, periodsPerDay, timeTablesPerSet, constraintsFunctions, posLessonsDicts, possibleClassrooms, bannedClassrooms);
+    let results = geneticLoop(initPopulation, prioritiesFunctions, iterations, days, periodsPerDay, posLessonsDicts);
+
+    return results;
 }
 
-async function entireGeneticProcess()
 
 
-
-let results = await entireProcess(2, [3,3], [{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"], 
+let results = await entireGeneticProcess(2, [3,3],[{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"],
     "Maths can't be in s11",
-     "Minimize travelling between different classrooms")
+    "Minimize travelling between different classrooms", 10, 10)
 if(results){
     console.log(results[0])
 }
