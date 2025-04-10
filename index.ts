@@ -100,7 +100,7 @@ function genOneRandTimeTable(
             disallowedClassroomsPerTimeSlot,
         } = state;
 
-        console.log(`state: ${JSON.stringify(state)}`)
+        // console.log(`state: ${JSON.stringify(state)}`)
 
         if (timeTable.isFinished(dayPos, periodPos)) {
             solution = timeTable;
@@ -110,15 +110,15 @@ function genOneRandTimeTable(
         const actualPosLessons = Object.keys(posLessonsDict).filter(
             (lesson) => posLessonsDict[lesson] > 0 && !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
         );
-        console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
+        // console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
 
         const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
         const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
-        console.log(`chosenLesson: ${chosenLesson}`)
-        console.log(`chosenClassroom: ${chosenClassroom}`)
+        // console.log(`chosenLesson: ${chosenLesson}`)
+        // console.log(`chosenClassroom: ${chosenClassroom}`)
 
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-            console.log("Constraints satisfied!")
+            // console.log("Constraints satisfied!")
             state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
         }
     }
@@ -235,12 +235,12 @@ function genOneRandSetOfTimeTables(
 function getScores(callableFunctions : CallableFunction[], timeTables : TimeTable[][]) : number[]{
     let scores : number[] = timeTables.map((timeTableSet : TimeTable[])=>{
         let score = 0;
-
-        timeTableSet.forEach(timeTable => {
-            callableFunctions.forEach((callableFunction : CallableFunction) => {
-                score += callableFunction(timeTable.turnIntoMatrix())
-            })
+        let timeTableMatricies = timeTableSet.map(timetable => timetable.turnIntoMatrix())
+        
+        callableFunctions.forEach((callableFunction : CallableFunction) => {
+            score += callableFunction(timeTableMatricies)
         })
+
         return score;
     })
     
@@ -360,7 +360,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                         });
 
                         if(lessonsInShortage.length == 0){
-                            console.log("No more shortage! Therefore no excess therefore fixed!")
+                            // console.log("No more shortage! Therefore no excess therefore fixed!")
                             breakOut = true;
                             return;
                         }
@@ -470,6 +470,23 @@ async function parseConstraintsFunctions(possibleLessons : string[], possibleCla
     return constraints;
 }
 
+function getBestTable(timeTables : TimeTable[][], prioritiesFunctions : CallableFunction[]) : TimeTable[]{
+    
+    let scores = getScores(prioritiesFunctions, timeTables);
+    console.log("Scores: ", scores)
+    
+    let maxScore = -Infinity;
+    let maxIndex = -1;
+    scores.forEach((score, index) => {
+        if(score > maxScore){
+            maxScore = score;
+            maxIndex = index;
+        }
+    })
+
+    return timeTables[maxIndex];
+}
+
 async function entireGeneticProcess(
     days : number, 
     periodsPerDay : number[],
@@ -493,8 +510,9 @@ async function entireGeneticProcess(
 
     let initPopulation = generateNRanTableSets(populationSize, days, periodsPerDay, timeTablesPerSet, constraintsFunctions, posLessonsDicts, possibleClassrooms, bannedClassrooms);
     let results = geneticLoop(initPopulation, prioritiesFunctions, iterations, days, periodsPerDay, posLessonsDicts);
+    let bestTable = getBestTable(results, prioritiesFunctions);
 
-    return results;
+    return bestTable;
 }
 
 async function main() {
@@ -502,7 +520,7 @@ async function main() {
         "Maths can't be in s11",
         "Minimize travelling between different classrooms", 10, 10);
     if(results){
-        console.log(results[0])
+        console.log(results)
     }
 }
 

@@ -1,7 +1,11 @@
 TODO for Scheduler:
 - Build the genetic code
-	- Figure out why there is a "undefined":null in the lessonDictDiff
+	- Figure out why there is a "undefined":null in the lessonDictDiff (Don't know if this is still a problem)
 - Tune the variables
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
+- Instead of just returning the best timetable, return the top 3 or 5 or something similar.
+
+
+
 - Oh dear god, maybe implement different days per timetable? (FIRST DO UI, this as a MAYBE)
 - Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")
