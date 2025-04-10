@@ -4,6 +4,9 @@ import TimeTable from "./Classes/TimeTable";
 import getEval from "./Utils/getEvals";
 import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 
+const elitismCount = 3;
+const mutationsPerSet = 10;
+
 let nextTimeTableTT : Record<string, TimeTable[]>;
 
 function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
@@ -26,26 +29,25 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     return timeTables;
 }
 
-function recurse(
+function genOneRandTimeTable(
     timeTable: TimeTable,
     posLessonsDict: Record<string, number>,
     posClassrooms: string[],
     dayPos: number,
     periodPos: number,
     disallowedClassroomsPerTimeSlot: Set<string>[][]
-): TimeTable[] {
-    const solutions: TimeTable[] = [];
-    const stack: {
+) : TimeTable{
+    let solution : TimeTable;
+    const state: {
         timeTable: TimeTable;
         posLessonsDict: Record<string, number>;
         posClassrooms: string[];
         dayPos: number;
         periodPos: number;
         disallowedClassroomsPerTimeSlot: Set<string>[][];
-    }[] = [{ timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }]; // Initial state
+    }= { timeTable, posLessonsDict, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot }; // Initial state
 
-    while (stack.length > 0) {
-        const currentState = stack.pop()!; // '!' because we know stack.length > 0
+    while (true) {
         const {
             timeTable,
             posLessonsDict,
@@ -53,114 +55,241 @@ function recurse(
             dayPos,
             periodPos,
             disallowedClassroomsPerTimeSlot,
-        } = currentState;
+        } = state;
 
         if (timeTable.isFinished(dayPos, periodPos)) {
-            solutions.push(timeTable);
-            continue; // Go to the next iteration of the while loop
+            solution = timeTable;
+            break;
         }
 
         const actualPosLessons = Object.keys(posLessonsDict).filter(
             (lesson) => !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
         );
+        const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
+        const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
 
-        for (const chosenLesson of actualPosLessons) {
-            for (const chosenClassroom of posClassrooms) {
-                if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-                    processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack)
-                }
-            }
+        if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
+            processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom, stack)
         }
     }
-    return solutions;
+    return solution;
 }
 
-function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string, stack){
-    const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
-    newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
-        chosenLesson,
-        chosenClassroom
-    );
-
-    const newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day) =>
-        day.map((period) => new Set(period))
-    );
-    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
-
-    const newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
-    newPosLessonsDict[chosenLesson]--;
-    if (newPosLessonsDict[chosenLesson] < 1) {
-        delete newPosLessonsDict[chosenLesson];
-    }
-
-    let newDayPos = dayPos;
-    let newPeriodPos = periodPos;
-
-    if (periodPos + 1 >= newTimeTable.days[dayPos].amPeriods) {
-        newDayPos++;
-        newPeriodPos = 0;
-    } else {
-        newPeriodPos++;
-    }
-    // Push the *new* state onto the stack
-    stack.push({
-        timeTable: newTimeTable,
-        posLessonsDict: newPosLessonsDict,
-        posClassrooms: posClassrooms,
-        dayPos: newDayPos,
-        periodPos: newPeriodPos,
-        disallowedClassroomsPerTimeSlot: newDisallowedClassroomsPerTimeSlot,
-    });
-}
-
-function timeTablesRecurse(timeTables : TimeTable[], posLessonsDicts : Record<string, number>[], posClassrooms : string[], timeTablePos : number, disallowedClassroomsPerTimeSlot : Set<string>[][]) : TimeTable[][]{
-
-    //*Checks if on the last (As we then increment it later before calling recurse)
-    if(timeTablePos >= timeTables.length){
-        return [timeTables];
-    }
-
-
-    let posLessonsDict = posLessonsDicts[timeTablePos]
-
-    //*This will be an array of the possible timeTable combinations (ie possible "timeTables" var)
-    let solutions : TimeTable[][] = [];
+function genOneRandSetOfTimeTables(
+    timeTables : TimeTable[],
+    posLessonsDicts : Record<string, number>[],
+    posClassrooms : string[],
+    timeTablePos : number,
+     disallowedClassroomsPerTimeSlot : Set<string>[][]
+) : TimeTable[]{
     
-    let posTimeTables : TimeTable[];
-    let key = JSON.stringify(posLessonsDict) + JSON.stringify(disallowedClassroomsPerTimeSlot);
-    let val = nextTimeTableTT[key];
-    if(val){
-        posTimeTables = val.map(tt=>tt.clone());
-    }else{
-        //*Get the next possible timeTable
-        posTimeTables = recurse(timeTables[timeTablePos], posLessonsDict, posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot)
-        nextTimeTableTT[key] = posTimeTables;
+    if(timeTablePos >= timeTables.length){
+        return timeTables;
     }
 
-    //*Increment the timeTablePos
-    let newTimeTablePos = timeTablePos + 1;
+    let nextPosTimeTable = genOneRandTimeTable(timeTables[timeTablePos], posLessonsDicts[timeTablePos], posClassrooms, 0, 0, disallowedClassroomsPerTimeSlot);
+    timeTables[timeTablePos] = nextPosTimeTable;
 
-    //*For each possible table...
-    posTimeTables.forEach(posTimeTable=>{
-        
-        //*We add it to the array of tables
-        timeTables[timeTablePos] = posTimeTable;
+    //*We calculate the NOW disallowed classroomsPerTimeSlot
+    let timeTableMatrix = nextPosTimeTable.turnIntoMatrix();
+    let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
 
-        //*We calculate the NOW disallowed classroomsPerTimeSlot
-        let timeTableMatrix = posTimeTable.turnIntoMatrix();
-        let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
+    for(let day = 0; day<timeTableMatrix.length; day++){
+        for(let period = 0; period<timeTableMatrix[day].length; period++){
+            let classroom = timeTableMatrix[day][period].classroom;
+            newDisallowedClassroomsPerTimeSlot[day][period].add(classroom);
+        }
+    }
+
+    return genOneRandSetOfTimeTables(timeTables, posLessonsDicts, posClassrooms, timeTablePos + 1, newDisallowedClassroomsPerTimeSlot);
+}
+
+
+function recursiveGeneticLoop(
+    population : TimeTable[][],
+    prioritiesFunctions : CallableFunction[],
+    iterationNumber : number,
+    iterationCutOffNumber : number
+){
+    const populationSize = population.length;
+    let scores = getScores(prioritiesFunctions, population);
+    let newParents = selectParents(population, scores, elitismCount);
+
+}
+
+function tournamentSelection(population: TimeTable[][], fitnessScores: number[], tournamentSize: number): TimeTable[] {
+    // Select random candidates for the tournament
+    let candidateIndices: number[] = [];
+    for (let i = 0; i < tournamentSize; i++) {
+        candidateIndices.push(Math.floor(Math.random() * population.length));
+    }
+    
+    // Find the best candidate
+    let bestIndex = candidateIndices[0];
+    for (let i = 1; i < candidateIndices.length; i++) {
+        if (fitnessScores[candidateIndices[i]] > fitnessScores[bestIndex]) {
+            bestIndex = candidateIndices[i];
+        }
+    }
+    
+    return population[bestIndex];
+}
+
+function selectParents(population: TimeTable[][], fitnessScores: number[], elitismCount: number): TimeTable[][] {
+    const populationSize = population.length;
+    const parents: TimeTable[][] = [];
+    
+    // 1. Elitism: Keep the best solutions
+    const indices = Array.from({ length: populationSize }, (_, i) => i);
+    indices.sort((a, b) => fitnessScores[b] - fitnessScores[a]);
+    
+    for (let i = 0; i < elitismCount; i++) {
+        parents.push(population[indices[i]]);
+    }
+    
+    // 2. Tournament selection for the rest
+    while (parents.length < populationSize) {
+        parents.push(tournamentSelection(population, fitnessScores, 3));
+    }
+    
+    return parents;
+}
+
+function breed(parents : TimeTable[][], targetPopulationSize : number, timeTablesPerSet : number, amDays : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[]) : TimeTable[][]{
+    let newPopulation : TimeTable[][] = [];
+    
+    //*Generate a combination for the amount specified by targetPopulationSize
+    for(let i = 0; i < targetPopulationSize; i++){
         
-        for(let day = 0; day<timeTableMatrix.length; day++){
-            for(let period = 0; period<timeTableMatrix[day].length; period++){
-                let classroom = timeTableMatrix[day][period].classroom;
-                newDisallowedClassroomsPerTimeSlot[day][period].add(classroom);
+        //*Generate a new chromosome
+        let chromosome : TimeTable[] = setUpTimeTables(timeTablesPerSet, amDays, parents[0][0].constraints, periodsPerDay)
+        for(let dayPos = 0; dayPos < parents[0][0].days.length; dayPos++){
+            
+            //*For each day, choose a random parent
+            let ranIndex = Math.floor(Math.random() * parents.length);
+            let chosenParent = parents[ranIndex];
+
+            //*Go through each timeTable in the timeTableSet and...
+            for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+
+                //*Set the day of those timeTables in the set to the chosen parent's day
+                let chromosomeTimeTable = chromosome[timeTableSetPos]
+                let chosenParentTimeTable = chosenParent[timeTableSetPos]
+                chromosomeTimeTable.days[dayPos] = chosenParentTimeTable.days[dayPos].clone()
+
+                //*This should keep the constraints satisfied, as they are day specific (i.e. don't have access to the other days)
+                //* and the classrooms should not overlap as the days are copied over from a non-overlapping timetable 
+                //* However, this does not satisfy the lessonsDict (total lessons in a timetable set) 
             }
         }
-        
-        let results = timeTablesRecurse(timeTables, posLessonsDicts, posClassrooms, newTimeTablePos, newDisallowedClassroomsPerTimeSlot);
-        solutions.push(...results);
+
+        //* Just doing swap mutations for now
+        for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+            for(let mutations = 0; mutations < 10; mutations++){
+                let dayPos1 = Math.floor(Math.random() * amDays);
+                let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
+                
+                let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
+                let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
+
+                let dayPos2 = Math.floor(Math.random() * amDays);
+                let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
+
+                let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
+                let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
+                
+                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
+                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
+
+                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;
+                
+            }
+            
+            
+        }
+
+
+
+        //*Fix the lessonsDictchromosome
+        //*Get the difference between the lessonsDict and the chromosome
+        for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+
+            //note: This is "inverted", i.e. if there is an excess of a lesson, it will be negative, and vice versa
+            let lessonDictDiff = structuredClone(lessonsDicts[timeTableSetPos])
+            chromosome[timeTableSetPos].days.forEach(day =>{
+                day.periods.forEach(period =>{
+                    let lesson = period.lesson;
+                    lessonDictDiff[lesson]--;
+                })
+            })
+
+            //Note: Theoretically should fix in one pass right?
+            chromosome[timeTableSetPos].days.forEach(day =>{
+                day.periods.forEach(period =>{
+                    let lessonsInShortage = Object.keys(lessonDictDiff).filter(key => lessonDictDiff[key] > 0);
+
+                    if(lessonsInShortage.length == 0){
+                        console.log("No more shortage! Therefore no excess therefore fixed!")
+                    }
+
+                    //*If there are too many
+                    if(lessonDictDiff[period.lesson] < 0){
+                        let randomLessonInShortage = lessonsInShortage[Math.floor(Math.random() * lessonsInShortage.length)];
+                        
+                        // Update the lessonDictDiff counts before changing the period
+                        lessonDictDiff[period.lesson]++; // Removing one instance of the current lesson
+                        lessonDictDiff[randomLessonInShortage]--; // Adding one instance of the new lesson
+                        
+                        // Change the lesson
+                        period.lesson = randomLessonInShortage;
+                    }
+                })
+            })
+        }
+
+        newPopulation.push(chromosome)
+    }
+
+    return newPopulation;
+}
+
+function generateNRanTables(n : number, amDays : number, periodsPerDay : number[]) : TimeTable[][]{
+    let res : TimeTable[][] = []
+    
+}
+
+async function parseScoringFunctions(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) : Promise<CallableFunction[]>{
+    let callableFunctions : CallableFunction[] = [];
+    let prioritiesTexts = await getScoringFunctions(possibleLessons, possibleClassrooms, paragraph);
+
+    if(prioritiesTexts){
+        let prioritiesText = JSON.parse(prioritiesTexts)
+        prioritiesText.forEach((priorityText : string) => {
+            console.log(`priority: ${prioritiesText}`)
+            let callableFunction : CallableFunction = getEval(`(${priorityText})`);
+            callableFunctions.push(callableFunction);
+        })
+    }else{
+        console.log("No priorities returned??")
+    }
+
+    return callableFunctions;
+}
+
+function getScores(callableFunctions : CallableFunction[], timeTables : TimeTable[][]) : number[]{
+    let scores : number[] = timeTables.map((timeTableSet : TimeTable[])=>{
+        let score = 0;
+
+        timeTableSet.forEach(timeTable => {
+            callableFunctions.forEach((callableFunction : CallableFunction) => {
+                score += callableFunction(timeTable.turnIntoMatrix())
+            })
+        })
+        return score;
     })
-    return solutions
+    
+    return scores;
 }
 
 async function getTables(days : number, periodsPerDay : number[], lessonsDicts : Record<string, number>[], possibleClassrooms : string[], paragraph : string, amTimetables : number) : Promise<TimeTable[][] | undefined>{
