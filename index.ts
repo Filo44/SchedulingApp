@@ -13,6 +13,7 @@ function setUpTable(amDays : number, constraints : CallableFunction[], periodsPe
     //*Creates all days
     for(let i = 0; i<amDays; i++){
         days.push(new DayTable(periodsPerDay[i]))
+        console.log("Day genned:", days[i])
     }
     //*Create timetable with all days
     let currTimetable = new TimeTable(constraints, days)
@@ -23,6 +24,7 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     let timeTables : TimeTable[] = [];
     for(let i = 0; i<amTimeTables; i++){
         timeTables.push(setUpTable(amDays, constraints, periodsPerDay));
+        console.log("Table genned:", setUpTable(amDays, constraints, periodsPerDay))
     }
     return timeTables;
 }
@@ -117,8 +119,9 @@ function genOneRandTimeTable(
         // console.log(`chosenLesson: ${chosenLesson}`)
         // console.log(`chosenClassroom: ${chosenClassroom}`)
 
+        console.log("--------------------------------")
+        console.log("timeTable: ", timeTable.turnIntoMatrix())
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
-            // console.log("Constraints satisfied!")
             state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
         }
     }
@@ -196,6 +199,7 @@ function generateNRanTableSets(
     let res : TimeTable[][] = []
     for(let i = 0; i<n; i++){
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
+        console.log("blankTimeTables: ", blankTimeTables)
         res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
     // console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
@@ -523,7 +527,7 @@ async function entireGeneticProcess(
 
 async function main() {
     let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "j1" ],
-        "Maths can't be in s11, You can't have more than 3 consecutive periods in the same classroom",
+        "You can't have more than 3 consecutive periods in the same classroom",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
         console.log(results)
