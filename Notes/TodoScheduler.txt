@@ -1,11 +1,14 @@
 TODO for Scheduler:
-- Build the genetic code
-	- Figure out why there is a "undefined":null in the lessonDictDiff (Don't know if this is still a problem)
-- Tune the variables
+- Fix the fact that the priorities function will check every cell assuming there is a lesson and classroom property
+- Constraints seem to not work all the time
+- Check why it doesn't fail with impossible constraints (check whether they were impossible in the first place)
+- ROUGHLY Tune the variables & code
+	- ** Classroom (and Lesson, though less important as fixing mixes them up) Mutations maybe?**
+		- Maybe not necessary as most of the time day swaps can optimise (Not really though as they can only swap the lessons between themselves at the same days)
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Instead of just returning the best timetable, return the top 3 or 5 or something similar.
 
 
 
-- Oh dear god, maybe implement different days per timetable? (FIRST DO UI, this as a MAYBE)
+- Oh dear god, maybe implement different days per timetable? (FIRST DO UI, this is a MAYBE)
 - Add titles to timetables such that constraints can check timeTable title (e.g. to enable: "The year 7s cannot have triple maths as they would get bored to death")

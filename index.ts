@@ -54,7 +54,9 @@ function getAllKeys(arrayOfObjects : object[]){
 
 function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
     let periodsPerTimeTable = periodsPerDay.reduce((partialSum, a) => partialSum + a, 0);
-    for(let i = 0; i < periodsPerDay.length; i++){
+    let amountOfTimeTables = lessonsDicts.length;
+
+    for(let i = 0; i < amountOfTimeTables; i++){
         let lessonsDictThisDay = lessonsDicts[i];
         
         let values = Object.values(lessonsDictThisDay)
@@ -198,7 +200,7 @@ function generateNRanTableSets(
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
         res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
-    console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
+    // console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
     return res
 }
 
@@ -516,9 +518,9 @@ async function entireGeneticProcess(
 }
 
 async function main() {
-    let results = await entireGeneticProcess(2, [3,3],[{"maths": 3, "english" : 3}, {"maths":2, "english": 2, "physics":2}], ["s11", "s10"],
-        "Maths can't be in s11",
-        "Minimize travelling between different classrooms", 10, 10);
+    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "j1" ],
+        "Maths can't be in s11, You can't have more than 3 consecutive periods in the same classroom",
+        "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
         console.log(results)
     }
