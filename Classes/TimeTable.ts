@@ -22,13 +22,6 @@ export default class TimeTable{
                 }
             }
             catch(e){
-                console.log("constraint: ", constraint)
-                console.log("timetable: ", matrix)
-                console.log("chosenClassroom: ", chosenClassroom)
-                console.log("chosenLesson: ", chosenLesson)
-                console.log("dayPos: ", dayPos)
-                console.log("periodPos: ", periodPos)
-                console.log(`Unable to run condition, error: ${e}`)
                 throw new Error(`Unable to run condition, error: ${e}`)
             }
         }

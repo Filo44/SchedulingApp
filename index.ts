@@ -13,7 +13,6 @@ function setUpTable(amDays : number, constraints : CallableFunction[], periodsPe
     //*Creates all days
     for(let i = 0; i<amDays; i++){
         days.push(new DayTable(periodsPerDay[i]))
-        console.log("Day genned:", days[i])
     }
     //*Create timetable with all days
     let currTimetable = new TimeTable(constraints, days)
@@ -24,7 +23,6 @@ function setUpTimeTables(amTimeTables : number, amDays : number, constraints : C
     let timeTables : TimeTable[] = [];
     for(let i = 0; i<amTimeTables; i++){
         timeTables.push(setUpTable(amDays, constraints, periodsPerDay));
-        console.log("Table genned:", setUpTable(amDays, constraints, periodsPerDay))
     }
     return timeTables;
 }
@@ -119,8 +117,6 @@ function genOneRandTimeTable(
         // console.log(`chosenLesson: ${chosenLesson}`)
         // console.log(`chosenClassroom: ${chosenClassroom}`)
 
-        console.log("--------------------------------")
-        console.log("timeTable: ", timeTable.turnIntoMatrix())
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
             state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
         }
@@ -199,7 +195,6 @@ function generateNRanTableSets(
     let res : TimeTable[][] = []
     for(let i = 0; i<n; i++){
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
-        console.log("blankTimeTables: ", blankTimeTables)
         res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
     // console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
@@ -335,13 +330,20 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                         let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
                         let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
                         
-                        if(chromosome[timeTableSetPos].checkConstraints(classroom2, lesson2, dayPos1, periodPos1) && chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){
+                        if(chromosome[timeTableSetPos].checkConstraints(classroom2, lesson2, dayPos1, periodPos1)){
+                            
+                            //*Need to swap the first one as then I have to check the second constraint
                             chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
                             chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
-                            
-                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
-                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
-                            break;
+                            if(chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){
+                                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
+                                break;
+                            }else{
+                                //*Reverse the first swap
+                                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom1;
+                                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson1;
+                            }
                         }
                     }
                 }
@@ -451,7 +453,7 @@ async function parseScoringFunctions(possibleLessons : string[], possibleClassro
     if(prioritiesTexts){
         let prioritiesText = JSON.parse(prioritiesTexts)
         prioritiesText.forEach((priorityText : string) => {
-            console.log(`priority: ${priorityText}`)
+            console.log(`\x1b[33m priority \x1b[0m: ${priorityText} `)
             let callableFunction : CallableFunction = getEval(`(${priorityText})`);
             callableFunctions.push(callableFunction);
         })
@@ -471,7 +473,7 @@ async function parseConstraintsFunctions(possibleLessons : string[], possibleCla
 
         for(let i=0; i<constraintsArr.length; i++){
             let constraint = constraintsArr[i];
-            console.log(`constraint: ${constraint}`)
+            console.log(`\x1b[32m constraint \x1b[0m: ${constraint}`)
             let callableFunction : CallableFunction = getEval(`(${constraint})`);
             constraints.push(callableFunction);
         }
