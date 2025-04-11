@@ -7,8 +7,6 @@ import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
 const elitismCount = 3;
 const mutationsPerSet = 10;
 
-let nextTimeTableTT : Record<string, TimeTable[]>;
-
 function setUpTable(amDays : number, constraints : CallableFunction[], periodsPerDay : number[]){
     let days : DayTable[] = [];
 
@@ -318,24 +316,30 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
             //* Just doing swap mutations for now
             for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
                 for(let mutations = 0; mutations < mutationsPerSet; mutations++){
-                    //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
-                    let dayPos1 = Math.floor(Math.random() * amDays);
-                    let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
                     
-                    let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
-                    let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
-
-                    let dayPos2 = Math.floor(Math.random() * amDays);
-                    let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
-
-                    let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
-                    let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
-                    
-                    chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
-                    chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
-
-                    chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
-                    chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
+                    while(true){
+                        //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
+                        let dayPos1 = Math.floor(Math.random() * amDays);
+                        let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
+                        
+                        let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
+                        let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
+                        
+                        let dayPos2 = Math.floor(Math.random() * amDays);
+                        let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
+                        
+                        let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
+                        let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
+                        
+                        if(chromosome[timeTableSetPos].checkConstraints(classroom2, lesson2, dayPos1, periodPos1) && chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){
+                            chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
+                            chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
+                            
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
+                            break;
+                        }
+                    }
                 }
             }
 
