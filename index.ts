@@ -321,21 +321,36 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                         let dayPos1 = Math.floor(Math.random() * amDays);
                         let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
                         
+                        //Note: Makes a COPY of the classroom and lesson, NOT a reference
                         let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
                         let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
                         
                         let dayPos2 = Math.floor(Math.random() * amDays);
                         let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
                         
+                        //Note: Makes a COPY of the classroom and lesson, NOT a reference
                         let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
                         let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
                         
+
+                        //*Temporarily swapping the first period to the second period's position
+                        chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                        chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;
+                        //*Checking NOW if adding the second period to the first period's position would break any constraints
                         if(chromosome[timeTableSetPos].checkConstraints(classroom2, lesson2, dayPos1, periodPos1)){
-                            
-                            //*Need to swap the first one as then I have to check the second constraint
+
+                            //*If it doesn't break any constraints, reverse the first swap (NOT SURE IF NECESSARY)
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom2;
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson2;
+
+                            //*Swapping the second period to the first period's position
                             chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
                             chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
+
+                            //*Checking NOW if adding the first period to the second period's position would break any constraints
                             if(chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){
+
+                                //*If it doesn't break any constraints, do the second swap (The first one is already done)
                                 chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
                                 chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
                                 break;
@@ -344,6 +359,10 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                                 chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom1;
                                 chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson1;
                             }
+                        }else{
+                            //*Reverse the first swap
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom2;
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson2;
                         }
                     }
                 }

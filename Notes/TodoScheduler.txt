@@ -4,6 +4,7 @@ TODO for Scheduler:
 - Check why it doesn't fail with impossible constraints (check whether they were impossible in the first place)
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Figure out why sometimes I get an "unexpected end of input" from evalling the code given by the LLM
+- Check wording of constraint and priority prompts to LLM (MAY HELP WITH ^^^^^^^^^^^^^^^^^^^)
 - ROUGHLY Tune the variables & code
 	- ** Classroom (and Lesson, though less important as fixing mixes them up) Mutations maybe?**
 		- Maybe not necessary as most of the time day swaps can optimise (Not really though as they can only swap the lessons between themselves at the same days)
