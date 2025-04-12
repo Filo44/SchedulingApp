@@ -12,7 +12,10 @@ export default class TimeTable{
     }
 
     checkConstraints(chosenClassroom : string, chosenLesson : string, dayPos : number, periodPos : number){
+        //NOTE: No changes to the matrix affect the original timetable as the matrix has NO reference to the original timetable. 
+
         let matrix = this.turnIntoMatrix();
+        matrix[dayPos][periodPos] = new TimeSlot(chosenLesson, chosenClassroom);
         for(let i = 0; i<this.constraints.length; i++){
             let constraint = this.constraints[i]
             try{
@@ -37,12 +40,6 @@ export default class TimeTable{
     }
 
     isFinished(dayPos : number, periodPos : number){
-        // console.log(`daypos: ${dayPos}`)
-        // console.log(`periodpos: ${periodPos}`)
-        // console.log(`this.days.length - 1 == dayPos: ${this.days.length - 1 == dayPos}`)
-        // console.log(`periodPos > this.days[dayPos].amPeriods: ${periodPos > this.days[dayPos].amPeriods}`)
-        // console.log(`days.length: ${this.days.length}`)
-        // console.log(`(dayPos >= this.days.length): ${(dayPos >= this.days.length)}`)
         return (dayPos >= this.days.length)
     }
 
