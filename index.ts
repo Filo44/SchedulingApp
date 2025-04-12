@@ -289,7 +289,13 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
     
     //*Generate a combination for the amount specified by targetPopulationSize
     for(let i = 0; i < targetPopulationSize; i++){
+        let attemptsToFail = 0;
+        const maxAttemptsToFail = 20;
         while(true){
+            attemptsToFail++;
+            if(attemptsToFail >= maxAttemptsToFail){
+                throw new Error("Maximum attempts to fail reached in breed.")
+            }
             //*Generate a new chromosome
             let chromosome : TimeTable[] = setUpTimeTables(timeTablesPerSet, amDays, parents[0][0].constraints, periodsPerDay)
             for(let dayPos = 0; dayPos < parents[0][0].days.length; dayPos++){
@@ -312,25 +318,33 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 }
             }
 
+            let hadToBreakOutDueToMaxAttempts = false;
             //* Just doing swap mutations for now
             for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
                 for(let mutations = 0; mutations < mutationsPerSet; mutations++){
-                    
+                    let attempts = 0;
+                    const MAX_ATTEMPTS = 1000; // Prevent infinite loops
                     while(true){
+                        attempts++;
+                        if(attempts >= MAX_ATTEMPTS){
+                            console.log("Maximum attempts reached in swap mutation.")
+                            hadToBreakOutDueToMaxAttempts = true;
+                            break;
+                        }
                         //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
                         let dayPos1 = Math.floor(Math.random() * amDays);
                         let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
                         
                         //Note: Makes a COPY of the classroom and lesson, NOT a reference
-                        let classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
-                        let lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
+                        const classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
+                        const lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
                         
                         let dayPos2 = Math.floor(Math.random() * amDays);
                         let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
                         
                         //Note: Makes a COPY of the classroom and lesson, NOT a reference
-                        let classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
-                        let lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
+                        const classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
+                        const lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
                         
 
                         //*Temporarily swapping the first period to the second period's position
@@ -365,7 +379,16 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                             chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson2;
                         }
                     }
+                    if(hadToBreakOutDueToMaxAttempts){
+                        break;
+                    }
                 }
+                if(hadToBreakOutDueToMaxAttempts){
+                    break;
+                }
+            }
+            if(hadToBreakOutDueToMaxAttempts){
+                continue;
             }
 
             //*Fix the lessonsDictchromosome
@@ -438,7 +461,10 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 break;
             }
         }
-
+    }
+    
+    if(targetPopulationSize != newPopulation.length){
+        throw new Error("Target population size not reached!")
     }
 
     return newPopulation;

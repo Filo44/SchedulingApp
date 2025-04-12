@@ -1,6 +1,7 @@
 TODO for Scheduler:
-- Check why constraints sometimes still don't apply
-- ONLY CHECKING THE FIRST CONSTRAINT?
+- MAKE THE FIRST WHILE TRUE LOOP AT LINE 292 NOT GO INFINITE, SORT SOMETHING OUT IN TERMS OF HOW YOU HANDLE IMPOSSIBLE CASES
+- Check why constraints sometimes still don't apply (THINK SOLVED)
+- ONLY CHECKING THE FIRST CONSTRAINT (NOTE SURE)?
 - Check why it doesn't fail with impossible constraints (check whether they were impossible in the first place)
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Figure out why sometimes I get an "unexpected end of input" from evalling the code given by the LLM
