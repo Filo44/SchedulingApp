@@ -422,13 +422,15 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                         //*If there are too many
                         if(lessonDictDiff[period.lesson] < 0){
                             let randomLessonInShortage = lessonsInShortage[Math.floor(Math.random() * lessonsInShortage.length)];
-
-                            // Update the lessonDictDiff counts before changing the period
-                            lessonDictDiff[period.lesson]++; // Removing one instance of the current lesson
-                            lessonDictDiff[randomLessonInShortage]--; // Adding one instance of the new lesson
                             
-                            // Change the lesson
-                            period.lesson = randomLessonInShortage;
+                            if(chromosome[timeTableSetPos].checkConstraints(period.classroom, randomLessonInShortage, dayPos, periodPos)){
+                                // Update the lessonDictDiff counts before changing the period
+                                lessonDictDiff[period.lesson]++; // Removing one instance of the current lesson
+                                lessonDictDiff[randomLessonInShortage]--; // Adding one instance of the new lesson
+                                
+                                // Change the lesson
+                                period.lesson = randomLessonInShortage;
+                            }
                         }
                         periodPos++;
                     })
@@ -573,7 +575,7 @@ async function entireGeneticProcess(
 }
 
 async function main() {
-    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "j1" ],
+    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "s10", "j1" ],
         "You can't have more than 3 consecutive periods in the same classroom",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
