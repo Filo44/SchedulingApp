@@ -1,8 +1,8 @@
 TODO for Scheduler:
-- Reformatting the prompt getting to be multishot, clearer and include examples
 - Solve the fact that constraints which check multiple days can be invalidated (through the day breeding/combination)
 - Check whether the lesson distribution is being fixed
 - ONLY CHECKING THE FIRST CONSTRAINT (NOTE SURE)?
+- Reformatting the prompt getting to be multishot, clearer and include examples
 
 
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
