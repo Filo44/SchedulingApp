@@ -60,7 +60,8 @@ function checkCanFinish(periodsPerDay : number[], lessonsDicts : object[]){
         let values = Object.values(lessonsDictThisDay)
         let sum = values.reduce((partialSum, a) => partialSum + a, 0);
 
-        if(sum<periodsPerTimeTable){
+        //Note: != instead of < as the period distribution fixing would not work otherwise
+        if(sum!=periodsPerTimeTable){
             return false;
         }
     }
@@ -576,7 +577,7 @@ async function entireGeneticProcess(
 }
 
 async function main() {
-    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "s10", "j1" ],
+    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 30, "english" : 15}], ["s11", "s10", "j1" ],
         "Maths can't be in s11, You can't have MORE than 3 consecutive periods in the same classroom (3 consecutive periods are fine, but 4 are not)",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
