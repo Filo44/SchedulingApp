@@ -1,8 +1,12 @@
 TODO for Scheduler:
-- Check why constraints sometimes still don't apply (THINK SOLVED)
+- Reformatting the prompt getting to be multishot, clearer and include examples
+- Solve the fact that constraints which check multiple days can be invalidated (through the day breeding/combination)
+- Check whether the lesson distribution is being fixed
 - ONLY CHECKING THE FIRST CONSTRAINT (NOTE SURE)?
-- Check why it doesn't fail with impossible constraints (check whether they were impossible in the first place)
+
+
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
+- Swap to Claude 3.7 Sonnet OR gemini 2.5 pro experimental model as way better in programming 
 - Figure out why sometimes I get an "unexpected end of input" from evalling the code given by the LLM
 - Check wording of constraint and priority prompts to LLM (MAY HELP WITH ^^^^^^^^^^^^^^^^^^^)
 - ROUGHLY Tune the variables & code

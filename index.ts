@@ -291,7 +291,9 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
     for(let i = 0; i < targetPopulationSize; i++){
         let attemptsToFail = 0;
         const maxAttemptsToFail = 20;
+        
         while(true){
+            console.log("--------------------------------")
             attemptsToFail++;
             if(attemptsToFail >= maxAttemptsToFail){
                 throw new Error("Maximum attempts to fail reached in breed.")
@@ -317,6 +319,12 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                     //* However, this does not satisfy the lessonsDict (total lessons in a timetable set) 
                 }
             }
+            
+            console.log("checking consecutive classrooms constraint, when creating a new chromosome")
+            if(!checkConsecutiveClassroomsConstraintForSet(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Consecutive classrooms constraint violated in breed.")
+            }
+
 
             let hadToBreakOutDueToMaxAttempts = false;
             //* Just doing swap mutations for now
@@ -390,6 +398,10 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
             if(hadToBreakOutDueToMaxAttempts){
                 continue;
             }
+            console.log("checking consecutive classrooms constraint, when swap mutations are done")
+            if(!checkConsecutiveClassroomsConstraintForSet(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Consecutive classrooms constraint violated in swap mutations.")
+            }
 
             //*Fix the lessonsDictchromosome
             //*Get the difference between the lessonsDict and the chromosome
@@ -443,7 +455,6 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
             }
 
             let fixed = true;
-
             for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
                 //Note: This is "inverted", i.e. if there is an excess of a lesson, it will be negative, and vice versa
                 let lessonDictDiff = structuredClone(lessonsDicts[timeTableSetPos])
@@ -457,6 +468,12 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                     fixed = false;
                 }
             }
+
+            console.log("checking consecutive classrooms constraint, when fixing the lessonsDict lesson distribution")
+            if(!checkConsecutiveClassroomsConstraintForSet(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Consecutive classrooms constraint violated in fixing the lessonsDict lesson distribution.")
+            }
+            
 
             if(fixed){
                 newPopulation.push(chromosome)
@@ -512,6 +529,38 @@ async function parseScoringFunctions(possibleLessons : string[], possibleClassro
 }
 
 async function parseConstraintsFunctions(possibleLessons : string[], possibleClassrooms : string[], paragraph : string) : Promise<CallableFunction[]>{
+    console.log("!!!!!!!!!!!!!!!!!!! HARDCODED CONSTRAINTS, HARDCODING FOR NOW. HARDCODED CONSTRAINTS, HARDCODING FOR NOW. HARDCODED CONSTRAINTS, HARDCODING FOR NOW. !!!!!!!!!!!!!!!!!!!!!!!")
+    
+    // return [function(timetableMatrix, chosenClassroom, chosenLesson, dayPos, periodPos) {
+    //     // Create a copy of the matrix to simulate the change
+    //     let matrixCopy = JSON.parse(JSON.stringify(timetableMatrix));
+        
+    //     // Simulate the placement of the new classroom
+    //     if (!matrixCopy[dayPos][periodPos]) {
+    //       matrixCopy[dayPos][periodPos] = {};
+    //     }
+    //     matrixCopy[dayPos][periodPos].classroom = chosenClassroom;
+        
+    //     // Now check consecutives in the simulated matrix
+    //     let currentClassroom = '';
+    //     let consecutiveCount = 0;
+    //     let maxConsecutive = 0;
+        
+    //     for (let i = 0; i < matrixCopy[dayPos].length; i++) {
+    //       const classroom = matrixCopy[dayPos][i]?.classroom;
+          
+    //       if (classroom === currentClassroom) {
+    //         consecutiveCount++;
+    //         maxConsecutive = Math.max(maxConsecutive, consecutiveCount);
+    //       } else {
+    //         currentClassroom = classroom;
+    //         consecutiveCount = 1;
+    //       }
+    //     }
+        
+    //     return maxConsecutive <= 3;
+    //   }]
+    
     let constraints : CallableFunction[] = []
     let constraintsText = await getFuncConstraints(possibleLessons, possibleClassrooms, paragraph);
 
@@ -574,9 +623,56 @@ async function entireGeneticProcess(
     return bestTable;
 }
 
+function checkConsecutiveClassroomsConstraint(timetableMatrix: TimeSlot[][]): boolean {
+    // Check each day individually for consecutive classroom violations
+    for (let dayIndex = 0; dayIndex < timetableMatrix.length; dayIndex++) {
+      const day = timetableMatrix[dayIndex];
+      
+      let currentClassroom = '';
+      let consecutiveCount = 0;
+      
+      for (let periodIndex = 0; periodIndex < day.length; periodIndex++) {
+        const classroom = day[periodIndex].classroom;
+        
+        if (classroom === currentClassroom) {
+          consecutiveCount++;
+          
+          // Check if we've exceeded the maximum allowed consecutive periods (3)
+          if (consecutiveCount > 3) {
+            console.log(`Constraint violation found on day ${dayIndex + 1}, starting at period ${periodIndex - consecutiveCount + 1}`);
+            console.log(`Consecutive classroom: ${currentClassroom}, Count: ${consecutiveCount}`);
+            return false;
+          }
+        } else {
+          // Reset counter for new classroom
+          currentClassroom = classroom;
+          consecutiveCount = 1;
+        }
+      }
+    }
+    
+    return true;
+}
+function checkConsecutiveClassroomsConstraintForSet(timeTableMatrices: TimeSlot[][][]): boolean {
+    // Check each timetable in the set
+    for (let tableIndex = 0; tableIndex < timeTableMatrices.length; tableIndex++) {
+        const timetable = timeTableMatrices[tableIndex];
+        
+        // Use the existing function to check this single timetable
+        const isValid = checkConsecutiveClassroomsConstraint(timetable);
+        
+        if (!isValid) {
+        console.log(`Constraint violation found in timetable ${tableIndex + 1}`);
+        return false;
+        }
+}
+
+return true;
+}
+
 async function main() {
     let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}], ["s11", "s10", "j1" ],
-        "You can't have more than 3 consecutive periods in the same classroom",
+        "You can't have MORE than 3 consecutive periods in the same classroom (3 consecutive periods are fine, but 4 are not)",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
         console.log(results)
