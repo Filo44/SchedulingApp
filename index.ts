@@ -322,27 +322,28 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
 
             let hadToBreakOutDueToMaxAttempts = false;
             //* Just doing swap mutations for now
-            for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
-                for(let mutations = 0; mutations < mutationsPerSet; mutations++){
-                    let attempts = 0;
-                    const MAX_ATTEMPTS = 1000; // Prevent infinite loops
-                    while(true){
-                        attempts++;
-                        if(attempts >= MAX_ATTEMPTS){
-                            console.log("Maximum attempts reached in swap mutation.")
-                            hadToBreakOutDueToMaxAttempts = true;
-                            break;
-                        }
-                        //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
-                        let dayPos1 = Math.floor(Math.random() * amDays);
-                        let periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
-                        
+            for(let mutations = 0; mutations < mutationsPerSet; mutations++){
+                let attempts = 0;
+                const MAX_ATTEMPTS = 1000; // Prevent infinite loops
+                while(true){
+                    attempts++;
+                    if(attempts >= MAX_ATTEMPTS){
+                        console.log("Maximum attempts reached in swap mutation.")
+                        hadToBreakOutDueToMaxAttempts = true;
+                        break;
+                    }
+                    //Note: Do it this way, as references are annoying and just using buffers and swapping, at least selon l'IA, créer des problèmes
+                    const dayPos1 = Math.floor(Math.random() * amDays);
+                    const periodPos1 = Math.floor(Math.random() * periodsPerDay[dayPos1]);
+                    
+                    const dayPos2 = Math.floor(Math.random() * amDays);
+                    const periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
+
+                    let works = true;
+                    for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
                         //Note: Makes a COPY of the classroom and lesson, NOT a reference
                         const classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
                         const lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
-                        
-                        let dayPos2 = Math.floor(Math.random() * amDays);
-                        let periodPos2 = Math.floor(Math.random() * periodsPerDay[dayPos2]);
                         
                         //Note: Makes a COPY of the classroom and lesson, NOT a reference
                         const classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
@@ -364,24 +365,35 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                             chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
 
                             //*Checking NOW if adding the first period to the second period's position would break any constraints
-                            if(chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){
-
-                                //*If it doesn't break any constraints, do the second swap (The first one is already done)
-                                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
-                                chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;                
-                                break;
-                            }else{
-                                //*Reverse the first swap
-                                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom1;
-                                chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson1;
+                            if(!chromosome[timeTableSetPos].checkConstraints(classroom1, lesson1, dayPos2, periodPos2)){             
+                                works = false;
                             }
-                        }else{
-                            //*Reverse the first swap
-                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom2;
-                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson2;
                         }
+
+                        //*Reversing the swaps (Not sure if both, or either are necessary, probs could mitigate this if I just have nested if statements, this is cleaner though)
+                        chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom1;
+                        chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson1;
+
+                        chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom2;
+                        chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson2;
                     }
-                    if(hadToBreakOutDueToMaxAttempts){
+                    if(works){
+                        //*Doing the swaps, as they are valid as checked before. Don't need to reverse if it doesn't work as the checking mechanism SHOULDN'T make any changes in the end
+                        for(let timeTableSetPos = 0; timeTableSetPos < timeTablesPerSet; timeTableSetPos++){
+                            //Note: Makes a COPY of the classroom and lesson, NOT a reference
+                            const classroom1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom;
+                            const lesson1 = chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson;
+                            
+                            //Note: Makes a COPY of the classroom and lesson, NOT a reference
+                            const classroom2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom;
+                            const lesson2 = chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson;
+
+                            chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].classroom = classroom2;
+                            chromosome[timeTableSetPos].days[dayPos1].periods[periodPos1].lesson = lesson2;
+
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].classroom = classroom1;
+                            chromosome[timeTableSetPos].days[dayPos2].periods[periodPos2].lesson = lesson1;
+                        }
                         break;
                     }
                 }
@@ -390,7 +402,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 }
             }
             if(hadToBreakOutDueToMaxAttempts){
-                continue;
+                break;
             }
 
             //*Fix the lessonsDictchromosome
