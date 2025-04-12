@@ -90,8 +90,10 @@ function genOneRandTimeTable(
     const MAX_ATTEMPTS = 10000; // Prevent infinite loops
 
     while (attempts < MAX_ATTEMPTS) {
+        console.log("--------------------------------")
         attempts++;
         
+        //TODO: Bring some of the next code out of the while loop
         const {
             timeTable,
             posLessonsDict,
@@ -109,14 +111,21 @@ function genOneRandTimeTable(
         }
 
         const actualPosLessons = Object.keys(posLessonsDict).filter(
-            (lesson) => posLessonsDict[lesson] > 0 && !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(lesson)
+            (lesson) => posLessonsDict[lesson] > 0
         );
-        // console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
+        const actualPosClassrooms = posClassrooms.filter(
+            (classroom) => !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(classroom)
+        );
+        console.log("dayPos: ", dayPos)
+        console.log("periodPos: ", periodPos)
+        console.log(`disallowedClassroomsPerTimeSlot: ${JSON.stringify(disallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
+        console.log("disallowedClassroomsPerTimeSlot[dayPos][periodPos]: ", [...disallowedClassroomsPerTimeSlot[dayPos][periodPos]])
+        console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
 
         const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
-        const chosenClassroom = posClassrooms[Math.floor(Math.random() * posClassrooms.length)];
-        // console.log(`chosenLesson: ${chosenLesson}`)
-        // console.log(`chosenClassroom: ${chosenClassroom}`)
+        const chosenClassroom = actualPosClassrooms[Math.floor(Math.random() * posClassrooms.length)];
+        console.log(`chosenLesson: ${chosenLesson}`)
+        console.log(`chosenClassroom: ${chosenClassroom}`)
 
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
             state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
@@ -136,19 +145,16 @@ function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: num
         chosenLesson,
         chosenClassroom
     );
-    
-    let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot.map((day, dayIndex) => {
-        if (dayIndex === dayPos) {
-            return day.map((period, periodIndex) => {
-                if (periodIndex === periodPos) {
-                    return new Set(period); // Only clone the set we'll modify
-                }
-                return period; // Reuse other periods in this day
-            });
-        }
-        return day; // Reuse other days completely
-    });
 
+    // console.log("--------------------------------")
+    // console.log(`chosenClassroom: ${chosenClassroom}`)
+    // console.log(`dayPos: ${dayPos}`)
+    // console.log(`periodPos: ${periodPos}`)
+    // console.log(`disallowedClassroomsPerTimeSlot: ${JSON.stringify(disallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
+    let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot;
+    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos] = structuredClone(newDisallowedClassroomsPerTimeSlot[dayPos][periodPos])
+    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
+    // console.log(`newDisallowedClassroomsPerTimeSlot: ${JSON.stringify(newDisallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
 
     let newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
     
@@ -171,7 +177,7 @@ function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: num
     } else {
         newPeriodPos++;
     }
-    // Push the *new* state onto the stack
+
     return {
         timeTable: newTimeTable,
         posLessonsDict: newPosLessonsDict,
@@ -193,11 +199,18 @@ function generateNRanTableSets(
     posClassrooms : string[],
     disallowedClassroomsPerTimeSlot : Set<string>[][]
 ) : TimeTable[][]{
+
     let res : TimeTable[][] = []
     for(let i = 0; i<n; i++){
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
         res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
+    console.log("Checking if the initial random sets of timeTables have overlapping classrooms...")
+    res.forEach(timeTableSet => {
+        if(!checkNoClassroomConflicts(timeTableSet.map(timeTable => timeTable.turnIntoMatrix()))){
+            throw new Error("Initial random sets of timeTables have overlapping classrooms!")
+        }
+    })
     // console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
     return res
 }
@@ -294,6 +307,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
         const maxAttemptsToFail = 20;
         
         while(true){
+            console.log("--------------------------------")
             attemptsToFail++;
             if(attemptsToFail >= maxAttemptsToFail){
                 throw new Error("Maximum attempts to fail reached in breed.")
@@ -318,6 +332,11 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                     //* and the classrooms should not overlap as the days are copied over from a non-overlapping timetable 
                     //* However, this does not satisfy the lessonsDict (total lessons in a timetable set) 
                 }
+            }
+
+            console.log("Checking if the chromosome has overlapping classrooms after the merging/creation...")
+            if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Chromosome has overlapping classrooms!")
             }
 
             let hadToBreakOutDueToMaxAttempts = false;
@@ -404,6 +423,10 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
             if(hadToBreakOutDueToMaxAttempts){
                 break;
             }
+            console.log("Checking if the chromosome has overlapping classrooms after the swap mutation...")
+            if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Chromosome has overlapping classrooms!")
+            }
 
             //*Fix the lessonsDictchromosome
             //*Get the difference between the lessonsDict and the chromosome
@@ -469,6 +492,11 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 if(Object.values(lessonDictDiff).some(value => value != 0)){
                     fixed = false;
                 }
+            }
+
+            console.log("Checking if the chromosome has overlapping classrooms after the lesson distribution fixing...")
+            if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
+                throw new Error("Chromosome has overlapping classrooms!")
             }
             
 
@@ -588,12 +616,54 @@ async function entireGeneticProcess(
     return bestTable;
 }
 
+function checkNoClassroomConflicts(timeTableMatrices: TimeSlot[][][]): boolean {
+    // For each day
+    for (let dayIndex = 0; dayIndex < timeTableMatrices[0].length; dayIndex++) {
+      // For each period in that day
+      const periodsInDay = timeTableMatrices[0][dayIndex].length;
+      
+      for (let periodIndex = 0; periodIndex < periodsInDay; periodIndex++) {
+        // Track classrooms used at this time slot
+        const classroomsUsed = new Set<string>();
+        
+        // Check each timetable for this day/period
+        for (let tableIndex = 0; tableIndex < timeTableMatrices.length; tableIndex++) {
+          // Skip if this timetable doesn't have this day or period
+          if (!timeTableMatrices[tableIndex][dayIndex] || 
+              !timeTableMatrices[tableIndex][dayIndex][periodIndex]) {
+            continue;
+          }
+          
+          const classroom = timeTableMatrices[tableIndex][dayIndex][periodIndex].classroom;
+          
+          // Skip empty classrooms
+          if (!classroom || classroom.trim() === '') {
+            continue;
+          }
+          
+          // Check if this classroom is already used by another timetable at the same time
+          if (classroomsUsed.has(classroom)) {
+            console.log(`Classroom conflict found: ${classroom} is used in multiple timetables on day index ${dayIndex}, period index ${periodIndex}`);
+            return false;
+          }
+          
+          // Add this classroom to the used set
+          classroomsUsed.add(classroom);
+        }
+      }
+    }
+    
+    // No conflicts found
+    return true;
+  }
+
 async function main() {
-    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 30, "english" : 15}], ["s11", "s10", "j1" ],
+    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 20, "english" : 15}], ["s11", "s10", "j1" ],
         "Maths can't be in s11, You can't have MORE than 3 consecutive periods in the same classroom (3 consecutive periods are fine, but 4 are not)",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
         console.log(results)
+        console.log(checkNoClassroomConflicts(results.map(timeTable => timeTable.turnIntoMatrix())))
     }
 }
 

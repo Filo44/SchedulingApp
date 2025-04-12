@@ -1,4 +1,6 @@
 TODO for Scheduler:
+********* CONTINUE DEBUGGING USING THE checkNoClassroomConflicts FUNCTION IN THE INIT GENERATION OF THE TIMETABLES (I.E. THE RECURSIVE BIT) **********
+
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Solve the fact that constraints which check multiple days can be invalidated (through the day breeding/combination)
 - Check whether the lesson distribution is being fixed
