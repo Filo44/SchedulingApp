@@ -90,9 +90,8 @@ function genOneRandTimeTable(
     const MAX_ATTEMPTS = 10000; // Prevent infinite loops
 
     while (attempts < MAX_ATTEMPTS) {
-        console.log("--------------------------------")
         attempts++;
-        
+
         //TODO: Bring some of the next code out of the while loop
         const {
             timeTable,
@@ -102,8 +101,6 @@ function genOneRandTimeTable(
             periodPos,
             disallowedClassroomsPerTimeSlot,
         } = state;
-
-        // console.log(`state: ${JSON.stringify(state)}`)
 
         if (timeTable.isFinished(dayPos, periodPos)) {
             solution = timeTable;
@@ -116,16 +113,15 @@ function genOneRandTimeTable(
         const actualPosClassrooms = posClassrooms.filter(
             (classroom) => !disallowedClassroomsPerTimeSlot[dayPos][periodPos].has(classroom)
         );
-        console.log("dayPos: ", dayPos)
-        console.log("periodPos: ", periodPos)
-        console.log(`disallowedClassroomsPerTimeSlot: ${JSON.stringify(disallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
-        console.log("disallowedClassroomsPerTimeSlot[dayPos][periodPos]: ", [...disallowedClassroomsPerTimeSlot[dayPos][periodPos]])
-        console.log(`actualPosLessons: ${JSON.stringify(actualPosLessons)}`)
+
+        // If there are no available classrooms, we can't proceed
+        if (actualPosClassrooms.length === 0) {
+            console.log("disallowedClassroomsPerTimeSlot[dayPos][periodPos]: ", [...disallowedClassroomsPerTimeSlot[dayPos][periodPos]])
+            throw new Error(`No available classrooms for day ${dayPos}, period ${periodPos}. All classrooms are disallowed.`);
+        }
 
         const chosenLesson = actualPosLessons[Math.floor(Math.random() * actualPosLessons.length)];
-        const chosenClassroom = actualPosClassrooms[Math.floor(Math.random() * posClassrooms.length)];
-        console.log(`chosenLesson: ${chosenLesson}`)
-        console.log(`chosenClassroom: ${chosenClassroom}`)
+        const chosenClassroom = actualPosClassrooms[Math.floor(Math.random() * actualPosClassrooms.length)];
 
         if (timeTable.checkConstraints(chosenClassroom, chosenLesson, dayPos, periodPos)) {
             state = processState(timeTable, posClassrooms, dayPos, periodPos, disallowedClassroomsPerTimeSlot, posLessonsDict, chosenLesson, chosenClassroom)
@@ -211,7 +207,8 @@ function generateNRanTableSets(
             throw new Error("Initial random sets of timeTables have overlapping classrooms!")
         }
     })
-    // console.log(`random sets of timeTables: ${JSON.stringify(res)}`)
+    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${JSON.stringify(res)}`)
+    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${res}`)
     return res
 }
 
@@ -655,11 +652,11 @@ function checkNoClassroomConflicts(timeTableMatrices: TimeSlot[][][]): boolean {
     
     // No conflicts found
     return true;
-  }
+}
 
 async function main() {
-    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 20, "english" : 15}], ["s11", "s10", "j1" ],
-        "Maths can't be in s11, You can't have MORE than 3 consecutive periods in the same classroom (3 consecutive periods are fine, but 4 are not)",
+    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 20, "english" : 15}], ["s11", "s10", "j2", "j1" ],
+        "No constraints",
         "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
     if(results){
         console.log(results)

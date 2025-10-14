@@ -1,5 +1,5 @@
 TODO for Scheduler:
-********* CONTINUE DEBUGGING USING THE checkNoClassroomConflicts FUNCTION IN THE INIT GENERATION OF THE TIMETABLES (I.E. THE RECURSIVE BIT) **********
+********* CHECK WHY THE ACTUAL POS CLASSROOMS'S LENGTH IS 0, throwing the custom error, even though there are 2 TIMETABLES but 4 POSSIBLE CLASSROOMS and 2<4**********
 
 - Class overlap banning doesn't seem to be working, check (Not sure if this is still the case TEST)
 - Solve the fact that constraints which check multiple days can be invalidated (through the day breeding/combination)
