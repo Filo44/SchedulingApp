@@ -1,4 +1,4 @@
-import TimeSlot from "./TimeSlot";
+import TimeSlot from "./TimeSlot.js";
 
 export default class DayTable{
     amPeriods : number;

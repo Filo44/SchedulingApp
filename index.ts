@@ -1,8 +1,8 @@
-import TimeSlot from "./Classes/TimeSlot";
-import DayTable from "./Classes/DayTable";
-import TimeTable from "./Classes/TimeTable";
-import getEval from "./Utils/getEvals";
-import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints"
+import TimeSlot from "./Classes/TimeSlot.js";
+import DayTable from "./Classes/DayTable.js";
+import TimeTable from "./Classes/TimeTable.js";
+import getEval from "./Utils/getEvals.js";
+import {getFuncConstraints, getScoringFunctions} from "./Utils/getConstraints.js"
 
 const elitismCount = 3;
 const mutationsPerSet = 10;
@@ -76,6 +76,7 @@ function genOneRandTimeTable(
     periodPos: number,
     disallowedClassroomsPerTimeSlot: Set<string>[][]
 ) : TimeTable{
+    console.log("--------------------------------")
     let solution : TimeTable;
     let state: {
         timeTable: TimeTable;
@@ -135,8 +136,18 @@ function genOneRandTimeTable(
     return solution!;
 }
 
-function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: number, periodPos: number, disallowedClassroomsPerTimeSlot: Set<string>[][], posLessonsDict : Record<string, number>, chosenLesson : string, chosenClassroom: string){
-    const newTimeTable = timeTable.clone(); // Important: Clone *before* modifying
+function processState(
+    timeTable: TimeTable,
+    posClassrooms: string[],
+    dayPos: number,
+    periodPos: number,
+    disallowedClassroomsPerTimeSlot: Set<string>[][],
+    posLessonsDict : Record<string, number>,
+    chosenLesson : string, 
+    chosenClassroom: string
+){
+    //*Making a clone of the timetable, and adding the chosen lesson and classroom to the new timetable
+    const newTimeTable = timeTable.clone();
     newTimeTable.days[dayPos].periods[periodPos] = new TimeSlot(
         chosenLesson,
         chosenClassroom
@@ -147,23 +158,25 @@ function processState(timeTable: TimeTable, posClassrooms: string[], dayPos: num
     // console.log(`dayPos: ${dayPos}`)
     // console.log(`periodPos: ${periodPos}`)
     // console.log(`disallowedClassroomsPerTimeSlot: ${JSON.stringify(disallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
+    //*Making a clone of the disallowed classrooms per time slot
     let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot;
     newDisallowedClassroomsPerTimeSlot[dayPos][periodPos] = structuredClone(newDisallowedClassroomsPerTimeSlot[dayPos][periodPos])
+    //*Adding chosen classroom to the disallowed classrooms per time slot
     newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
     // console.log(`newDisallowedClassroomsPerTimeSlot: ${JSON.stringify(newDisallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
 
-    let newPosLessonsDict = { ...posLessonsDict }; // Shallow copy is usually sufficient here
+    //* Shallow should be sufficient here
+    let newPosLessonsDict = { ...posLessonsDict }; 
     
-    if(chosenClassroom){
-        newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
-    }else{
-        newPosLessonsDict[chosenLesson]--;
-        if (newPosLessonsDict[chosenLesson] < 1) {
-            delete newPosLessonsDict[chosenLesson];
-        }
+    //*Decreases the amount of periods the lesson needs to be in, in the following time slots
+    newPosLessonsDict[chosenLesson]--;
+    //*If the count of the chosen lesson is less than 1, delete the lesson from the dictionary
+    if (newPosLessonsDict[chosenLesson] < 1) {
+        delete newPosLessonsDict[chosenLesson];
     }
 
 
+    //*Goes to the next timesslot
     let newDayPos = dayPos;
     let newPeriodPos = periodPos;
 
@@ -196,20 +209,20 @@ function generateNRanTableSets(
     disallowedClassroomsPerTimeSlot : Set<string>[][]
 ) : TimeTable[][]{
 
-    let res : TimeTable[][] = []
+    let timeTables : TimeTable[][] = []
     for(let i = 0; i<n; i++){
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
-        res.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
+        timeTables.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
     console.log("Checking if the initial random sets of timeTables have overlapping classrooms...")
-    res.forEach(timeTableSet => {
+    timeTables.forEach(timeTableSet => {
         if(!checkNoClassroomConflicts(timeTableSet.map(timeTable => timeTable.turnIntoMatrix()))){
             throw new Error("Initial random sets of timeTables have overlapping classrooms!")
         }
     })
-    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${JSON.stringify(res)}`)
-    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${res}`)
-    return res
+    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${JSON.stringify(timeTables)}`)
+    console.log(`\x1b[36m random sets of timeTables: \x1b[0m${timeTables}`)
+    return timeTables
 }
 
 //Note: Doesn't really make sense as a recursive function...
@@ -585,7 +598,7 @@ function getBestTable(timeTables : TimeTable[][], prioritiesFunctions : Callable
     return timeTables[maxIndex];
 }
 
-async function entireGeneticProcess(
+export async function entireGeneticProcess(
     days : number, 
     periodsPerDay : number[],
     posLessonsDicts : Record<string, number>[], 
@@ -613,7 +626,7 @@ async function entireGeneticProcess(
     return bestTable;
 }
 
-function checkNoClassroomConflicts(timeTableMatrices: TimeSlot[][][]): boolean {
+export function checkNoClassroomConflicts(timeTableMatrices: TimeSlot[][][]): boolean {
     // For each day
     for (let dayIndex = 0; dayIndex < timeTableMatrices[0].length; dayIndex++) {
       // For each period in that day
@@ -653,15 +666,3 @@ function checkNoClassroomConflicts(timeTableMatrices: TimeSlot[][][]): boolean {
     // No conflicts found
     return true;
 }
-
-async function main() {
-    let results = await entireGeneticProcess(5, [7,7,7,7,7], [{"maths": 5, "english" : 5, "science" : 4, "french" : 4, "design" : 3, "phe": 4, "drama": 3, "i&s": 4, "misc": 3}, {"maths": 20, "english" : 15}], ["s11", "s10", "j2", "j1" ],
-        "No constraints",
-        "Minimize travelling between sites (The classrooms starting with s are in Spahn and the classrooms starting with j are in Jubilee therefore minimise walking between sites)", 100, 10);
-    if(results){
-        console.log(results)
-        console.log(checkNoClassroomConflicts(results.map(timeTable => timeTable.turnIntoMatrix())))
-    }
-}
-
-main().catch(error => console.error(error));

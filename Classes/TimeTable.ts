@@ -1,5 +1,5 @@
-import DayTable from "./DayTable";
-import TimeSlot from "./TimeSlot";
+import DayTable from "./DayTable.js";
+import TimeSlot from "./TimeSlot.js";
 import util from "util"; // Only needed in Node.js
 
 export default class TimeTable{

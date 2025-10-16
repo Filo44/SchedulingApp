@@ -1,9 +1,16 @@
 {
+  "type": "module",
   "dependencies": {
     "@google/genai": "^0.6.0",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
-    "@types/node": "^22.13.13"
+    "@types/node": "^22.13.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "dev": "node --inspect-brk --loader ts-node/esm ./Test/test.ts",
+    "start": "ts-node test/test.ts"
   }
 }
