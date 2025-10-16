@@ -319,7 +319,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
         const maxAttemptsToFail = 20;
         
         while(true){
-            console.log("--------------------------------")
+            // console.log("--------------------------------")
             attemptsToFail++;
             if(attemptsToFail >= maxAttemptsToFail){
                 throw new Error("Maximum attempts to fail reached in breed.")
@@ -346,7 +346,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 }
             }
 
-            console.log("Checking if the chromosome has overlapping classrooms after the merging/creation...")
+            // console.log("Checking if the chromosome has overlapping classrooms after the merging/creation...")
             if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
                 throw new Error("Chromosome has overlapping classrooms!")
             }
@@ -435,7 +435,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
             if(hadToBreakOutDueToMaxAttempts){
                 break;
             }
-            console.log("Checking if the chromosome has overlapping classrooms after the swap mutation...")
+            // console.log("Checking if the chromosome has overlapping classrooms after the swap mutation...")
             if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
                 throw new Error("Chromosome has overlapping classrooms!")
             }
