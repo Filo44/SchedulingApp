@@ -506,7 +506,7 @@ function breed(parents : TimeTable[][], targetPopulationSize : number, timeTable
                 }
             }
 
-            console.log("Checking if the chromosome has overlapping classrooms after the lesson distribution fixing...")
+            // console.log("Checking if the chromosome has overlapping classrooms after the lesson distribution fixing...")
             if(!checkNoClassroomConflicts(chromosome.map(timeTable => timeTable.turnIntoMatrix()))){
                 throw new Error("Chromosome has overlapping classrooms!")
             }
@@ -610,6 +610,8 @@ export async function entireGeneticProcess(
     iterations : number,
     populationSize : number
 ){
+    //*Length of the posLessonDicts is the amount of timetables
+    const amountOfTimeTables = posLessonsDicts.length;
     if(!checkCanFinish(periodsPerDay, posLessonsDicts)){
         throw new Error("lessonsDicts adds up to less than the mandated periods per day!")
     }

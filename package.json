@@ -10,7 +10,8 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "test": "node --inspect-brk --loader ts-node/esm ./Test/test.ts",
-    "start": "node --loader ts-node/esm ./Test/test.ts"
+    "debug": "node --inspect-brk --loader ts-node/esm ./Test/test.ts",
+    "test": "node --loader ts-node/esm ./Test/test.ts",
+    "cTest": "node --loader ts-node/esm ./Test/comprehensiveTest.ts"
   }
 }
