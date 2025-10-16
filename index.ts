@@ -159,8 +159,7 @@ function processState(
     // console.log(`periodPos: ${periodPos}`)
     // console.log(`disallowedClassroomsPerTimeSlot: ${JSON.stringify(disallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
     //*Making a clone of the disallowed classrooms per time slot
-    let newDisallowedClassroomsPerTimeSlot = disallowedClassroomsPerTimeSlot;
-    newDisallowedClassroomsPerTimeSlot[dayPos][periodPos] = structuredClone(newDisallowedClassroomsPerTimeSlot[dayPos][periodPos])
+    let newDisallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlot);
     //*Adding chosen classroom to the disallowed classrooms per time slot
     newDisallowedClassroomsPerTimeSlot[dayPos][periodPos].add(chosenClassroom);
     // console.log(`newDisallowedClassroomsPerTimeSlot: ${JSON.stringify(newDisallowedClassroomsPerTimeSlot.map(row =>row.map(set => [...set])))}`)
@@ -206,11 +205,14 @@ function generateNRanTableSets(
     constraints : CallableFunction[], 
     posLessonsDicts : Record<string, number>[], 
     posClassrooms : string[],
-    disallowedClassroomsPerTimeSlot : Set<string>[][]
+    disallowedClassroomsPerTimeSlotTemplate : Set<string>[][]
 ) : TimeTable[][]{
 
     let timeTables : TimeTable[][] = []
     for(let i = 0; i<n; i++){
+        //*Create a disallowed classroom per time slot variable from template
+        let disallowedClassroomsPerTimeSlot = structuredClone(disallowedClassroomsPerTimeSlotTemplate)
+        //*Create blank timetables
         let blankTimeTables = setUpTimeTables(timeTablesPerSet, amDays, constraints, periodsPerDay)
         timeTables.push(genOneRandSetOfTimeTables(blankTimeTables, posLessonsDicts, posClassrooms, 0, disallowedClassroomsPerTimeSlot))
     }
